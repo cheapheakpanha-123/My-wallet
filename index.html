@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Pro Wallet v2</title>
+    <title>Pro Wallet v3 (PDF)</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
     <style>
         /* --- CSS STYLES --- */
         :root {
@@ -92,7 +96,6 @@
             margin: 25px 0; padding: 15px; width: 100%;
             border-radius: 10px; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
         }
-        .btn-danger { background-color: var(--expense-color); box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3); }
 
         /* TAGS */
         .input-group { display: flex; gap: 5px; }
@@ -102,8 +105,19 @@
         .tag-pill { background: #e2e8f0; color: #475569; padding: 4px 10px; border-radius: 15px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; }
         .tag-pill span { cursor: pointer; font-weight: bold; color: #ef4444; }
 
-        /* HISTORY */
-        .filters { display: flex; gap: 10px; margin-bottom: 10px; position: sticky; top: 0; background: var(--bg-color); padding: 5px 0; z-index: 5; }
+        /* HISTORY & PDF BUTTONS */
+        .filters { display: flex; gap: 10px; margin-bottom: 10px; position: sticky; top: 0; background: var(--bg-color); padding: 5px 0; z-index: 5; flex-wrap: wrap;}
+        .filters select { flex: 1; min-width: 100px; }
+        
+        /* New PDF Buttons */
+        .pdf-actions { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-pdf { 
+            flex: 1; padding: 8px; font-size: 0.85rem; background: #fff; border: 1px solid #ccc; 
+            border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;
+            color: #444; font-weight: 600;
+        }
+        .btn-pdf:active { background: #eee; }
+
         .history-summary { background: #fff; padding: 15px 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; margin-bottom: 15px; border: 1px solid #eee; }
         .hs-item { text-align: center; flex: 1; padding: 0 2px; }
         .hs-item span { display: block; font-size: 0.75rem; color: #888; text-transform: uppercase; }
@@ -119,12 +133,11 @@
         .item-tag { font-size: 0.7em; background: #eee; color: #555; padding: 2px 6px; border-radius: 4px; }
         .delete-btn { background: var(--expense-color); border: 0; color: #fff; padding: 5px 10px; border-radius: 5px; margin-left: 10px; cursor: pointer; }
 
-        /* SETTINGS TAB */
+        /* SETTINGS */
         .section-card { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #eee; }
         .backup-code { font-family: monospace; font-size: 12px; height: 100px; margin-bottom: 10px; width: 100%; box-sizing: border-box; }
         .action-row { display: flex; gap: 10px; }
         .btn-outline { background: white; border: 2px solid var(--primary-color); color: var(--primary-color); flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px;}
-        .btn-outline:active { background: #f0f9ff; }
         
         .manage-tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
         .manage-tag { background: #f3f4f6; padding: 8px 12px; border-radius: 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; border: 1px solid #ddd; }
@@ -132,32 +145,15 @@
 
         /* BOTTOM NAV */
         .bottom-nav { 
-            background: white; 
-            display: flex; 
-            justify-content: space-around; 
-            align-items: center; 
-            border-top: 1px solid #ddd; 
-            position: absolute; 
-            bottom: 0; 
-            width: 100%; 
+            background: white; display: flex; justify-content: space-around; align-items: center; 
+            border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; 
             padding-bottom: env(safe-area-inset-bottom);
-            height: calc(var(--nav-height) + env(safe-area-inset-bottom));
-            box-sizing: border-box;
+            height: calc(var(--nav-height) + env(safe-area-inset-bottom)); box-sizing: border-box;
         }
-        
         .nav-item { 
-            flex: 1; 
-            text-align: center; 
-            padding: 10px; 
-            cursor: pointer; 
-            color: #888; 
-            font-size: 0.9rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            height: var(--nav-height); 
+            flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; font-size: 0.9rem;
+            display: flex; flex-direction: column; justify-content: center; height: var(--nav-height); 
         }
-        
         .nav-item.active { color: var(--primary-color); font-weight: bold; }
         .nav-item span { display: block; font-size: 1.2rem; margin-bottom: 2px; }
     </style>
@@ -205,6 +201,12 @@
                 <select id="filter-month" onchange="renderHistory()"><option value="all">All Months</option></select>
                 <select id="filter-category" onchange="renderHistory()"><option value="all">All Categories</option></select>
             </div>
+            
+            <div class="pdf-actions">
+                <button class="btn-pdf" onclick="generatePDF('monthly')">📄 Monthly Report</button>
+                <button class="btn-pdf" onclick="generatePDF('yearly')">📊 Yearly Report</button>
+            </div>
+
             <div class="history-summary">
                 <div class="hs-item"><span>Income</span><strong id="hist-inc" style="color: var(--income-color)">+$0</strong></div>
                 <div class="hs-item"><span>Expense</span><strong id="hist-exp" style="color: var(--expense-color)">-$0</strong></div>
@@ -227,8 +229,7 @@
             <h3>Manage Categories</h3>
             <div class="section-card">
                 <p style="font-size: 0.9rem; color: #666; margin-bottom:10px;">Click 'x' to delete a category.</p>
-                <div id="manage-categories-list" class="manage-tag-list">
-                    </div>
+                <div id="manage-categories-list" class="manage-tag-list"></div>
             </div>
 
             <h3>Backup & Restore</h3>
@@ -287,7 +288,6 @@
     let wallets = JSON.parse(localStorage.getItem('wallets')) || [{id: 'main', name: 'Main Wallet'}];
     let currentWalletId = localStorage.getItem('currentWalletId') || 'main';
     
-    // Ensure the current wallet actually exists (in case it was deleted externally)
     if(!wallets.find(w => w.id === currentWalletId)) {
         currentWalletId = wallets[0].id;
         localStorage.setItem('currentWalletId', currentWalletId);
@@ -311,46 +311,120 @@
         renderHistory(); 
     }
 
-    // --- NEW FEATURES: WALLET & CATEGORY MANAGEMENT ---
+    // --- NEW: PDF GENERATION LOGIC ---
+    function generatePDF(type) {
+        if (!window.jspdf) { alert("PDF Library not loaded. Check internet."); return; }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        const wName = wallets.find(w => w.id === currentWalletId).name;
+        const selectedMonthVal = filterMonth.value;
+        let pdfTitle = "";
+        let pdfData = [];
+
+        // 1. FILTER DATA
+        if (type === 'monthly') {
+            if (selectedMonthVal === 'all') {
+                alert("Please select a specific month in the filter dropdown first.");
+                return;
+            }
+            pdfTitle = `Monthly Report: ${selectedMonthVal}`;
+            pdfData = transactions.filter(t => t.walletId === currentWalletId && t.date.startsWith(selectedMonthVal));
+        } else if (type === 'yearly') {
+            // If a month is selected (e.g., 2025-10), use 2025. If 'all', use current year.
+            let year = selectedMonthVal === 'all' ? new Date().getFullYear().toString() : selectedMonthVal.substring(0, 4);
+            pdfTitle = `Yearly Report: ${year}`;
+            pdfData = transactions.filter(t => t.walletId === currentWalletId && t.date.startsWith(year));
+        }
+
+        if(pdfData.length === 0) { alert("No transactions found for this period."); return; }
+
+        // Sort by date
+        pdfData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Calculate Totals for PDF
+        const totalInc = pdfData.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0);
+        const totalExp = pdfData.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0);
+        const totalNet = totalInc + totalExp;
+
+        // 2. CREATE PDF HEADER
+        doc.setFontSize(18);
+        doc.text(wName, 14, 20);
+        doc.setFontSize(14);
+        doc.text(pdfTitle, 14, 28);
+        doc.setFontSize(10);
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 34);
+
+        // 3. SUMMARY BOX
+        doc.setDrawColor(200);
+        doc.setFillColor(245, 245, 245);
+        doc.rect(14, 40, 180, 20, 'FD'); // Box
+        
+        doc.setFontSize(10);
+        doc.setTextColor(46, 204, 113); // Green
+        doc.text(`Income: +$${totalInc.toFixed(2)}`, 20, 52);
+        
+        doc.setTextColor(231, 76, 60); // Red
+        doc.text(`Expense: -$${Math.abs(totalExp).toFixed(2)}`, 80, 52);
+        
+        doc.setTextColor(0); // Black
+        doc.text(`Net: $${totalNet.toFixed(2)}`, 140, 52);
+
+        // 4. GENERATE TABLE
+        const tableBody = pdfData.map(t => [
+            t.date,
+            t.text,
+            t.categories.join(', '),
+            (t.amount > 0 ? '+' : '') + t.amount.toFixed(2)
+        ]);
+
+        doc.autoTable({
+            startY: 65,
+            head: [['Date', 'Description', 'Category', 'Amount']],
+            body: tableBody,
+            theme: 'grid',
+            headStyles: { fillColor: [59, 130, 246] },
+            columnStyles: {
+                3: { halign: 'right', fontStyle: 'bold' }
+            },
+            didParseCell: function(data) {
+                // Color the Amount column
+                if (data.section === 'body' && data.column.index === 3) {
+                    const val = parseFloat(data.cell.raw.replace('+', ''));
+                    if (val < 0) data.cell.styles.textColor = [231, 76, 60]; // Red
+                    else data.cell.styles.textColor = [46, 204, 113]; // Green
+                }
+            }
+        });
+
+        // 5. SAVE
+        doc.save(`${wName.replace(/\s+/g, '_')}_${type}_report.pdf`);
+    }
+
+    // --- EXISTING FEATURES ---
 
     function renameWallet() {
         const wallet = wallets.find(w => w.id === currentWalletId);
         if(!wallet) return;
-        
         const newName = prompt("Enter new name for this wallet:", wallet.name);
         if(newName && newName.trim() !== "") {
             wallet.name = newName.trim();
             localStorage.setItem('wallets', JSON.stringify(wallets));
             renderWalletSelector();
-            alert("Wallet renamed successfully.");
         }
     }
 
     function deleteWallet() {
-        if(wallets.length <= 1) {
-            alert("You cannot delete the only remaining wallet.");
-            return;
-        }
-        
+        if(wallets.length <= 1) { alert("You cannot delete the only remaining wallet."); return; }
         const wallet = wallets.find(w => w.id === currentWalletId);
-        const confirmMsg = `Are you sure you want to delete "${wallet.name}"?\n\nThis will DELETE ALL transactions in this wallet permanently.`;
-        
-        if(confirm(confirmMsg)) {
-            // 1. Remove transactions for this wallet
+        if(confirm(`Delete "${wallet.name}" and ALL its transactions?`)) {
             transactions = transactions.filter(t => t.walletId !== currentWalletId);
             localStorage.setItem('transactions', JSON.stringify(transactions));
-            
-            // 2. Remove wallet from list
             wallets = wallets.filter(w => w.id !== currentWalletId);
             localStorage.setItem('wallets', JSON.stringify(wallets));
-            
-            // 3. Select the first available wallet
             currentWalletId = wallets[0].id;
             localStorage.setItem('currentWalletId', currentWalletId);
-            
-            // 4. Reload UI
             init();
-            alert("Wallet deleted.");
         }
     }
 
@@ -365,68 +439,43 @@
     }
 
     function deleteCategory(catName) {
-        if(categories.length <= 1) {
-            alert("You must keep at least one category.");
-            return;
-        }
+        if(categories.length <= 1) { alert("Must keep one category."); return; }
         if(confirm(`Delete category "${catName}"?`)) {
             categories = categories.filter(c => c !== catName);
             localStorage.setItem('categories', JSON.stringify(categories));
             updateCategoryDropdowns();
             renderManageCategories();
-            
-            // Remove from current input tags if selected
-            if(currentTags.includes(catName)) {
-                removeTagFromInput(catName);
-            }
+            if(currentTags.includes(catName)) removeTagFromInput(catName);
         }
     }
 
-    // --- EXISTING BACKUP LOGIC ---
     function generateBackup() {
-        const data = {
-            w: wallets,
-            t: transactions,
-            c: categories,
-            cw: currentWalletId
-        };
-        const code = btoa(JSON.stringify(data));
-        backupText.value = code;
+        const data = { w: wallets, t: transactions, c: categories, cw: currentWalletId };
+        backupText.value = btoa(JSON.stringify(data));
         alert("Backup generated! You can now click 'Send to Gmail'.");
     }
 
     function emailBackup() {
         const code = backupText.value.trim();
-        if(!code) {
-            alert("Please click 'Generate Backup' first!");
-            return;
-        }
-        const subject = encodeURIComponent("My Wallet Backup Code");
-        const body = encodeURIComponent("Here is my backup code. Copy everything below and paste it into the app:\n\n" + code);
-        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        if(!code) { alert("Please click 'Generate Backup' first!"); return; }
+        window.location.href = `mailto:?subject=Wallet Backup&body=${encodeURIComponent(code)}`;
     }
 
     function restoreBackup() {
         const code = backupText.value.trim();
-        if(!code) { alert("Please paste a backup code first."); return; }
-        
+        if(!code) return;
         try {
-            const json = atob(code);
-            const data = JSON.parse(json);
-            
-            if(confirm("This will REPLACE all data on this device with the backup. Are you sure?")) {
+            const data = JSON.parse(atob(code));
+            if(confirm("REPLACE all data with backup?")) {
                 localStorage.setItem('wallets', JSON.stringify(data.w));
                 localStorage.setItem('transactions', JSON.stringify(data.t));
                 localStorage.setItem('categories', JSON.stringify(data.c));
                 localStorage.setItem('currentWalletId', data.cw);
                 location.reload(); 
             }
-        } catch(e) {
-            alert("Invalid Backup Code. Please check and try again.");
-        }
+        } catch(e) { alert("Invalid Backup Code."); }
     }
 
-    // --- CORE APP LOGIC ---
     function renderWalletSelector() {
         walletSelect.innerHTML = '';
         wallets.forEach(w => {
@@ -464,13 +513,10 @@
             categoryDropdown.appendChild(option);
         });
         const addOpt = document.createElement('option'); addOpt.value = "NEW_CAT"; addOpt.innerText = "+ Create New Category"; categoryDropdown.appendChild(addOpt);
-        
         const currentFilter = filterCategory.value;
         filterCategory.innerHTML = '<option value="all">All Categories</option>';
         categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; filterCategory.appendChild(option); });
         filterCategory.value = currentFilter;
-        
-        // Refresh manage list as well
         renderManageCategories();
     }
     categoryDropdown.addEventListener('change', function() {
