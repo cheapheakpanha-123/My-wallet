@@ -115,6 +115,7 @@
         .backup-code { font-family: monospace; font-size: 12px; height: 100px; margin-bottom: 10px; }
         .action-row { display: flex; gap: 10px; }
         .btn-outline { background: white; border: 2px solid var(--primary-color); color: var(--primary-color); flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;}
+        .btn-outline:active { background: #f0f9ff; }
 
         /* BOTTOM NAV */
         .bottom-nav { height: var(--nav-height); background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; }
@@ -178,15 +179,16 @@
         <div id="tab-settings" class="tab-view">
             <h3>Backup & Restore</h3>
             <div class="backup-area">
-                <p><strong>To move data to another device:</strong><br>1. Click "Generate Backup"<br>2. Copy the code<br>3. Send code to new device<br>4. Paste in "Restore" box</p>
+                <p><strong>Save to Gmail:</strong><br>1. Click "Generate Backup".<br>2. Click "Send to Gmail".<br>3. Send email to yourself.<br>4. On new device, open email & copy code.</p>
                 <textarea id="backup-text" class="backup-code" placeholder="Backup code will appear here..."></textarea>
                 <div class="action-row">
                     <button class="btn-outline" onclick="generateBackup()">1. Generate Backup</button>
-                    <button class="btn-outline" onclick="copyBackup()">2. Copy Code</button>
+                    <button class="btn-outline" style="background-color: #ea4335; color: white; border: none;" onclick="emailBackup()">📧 Send to Gmail</button>
                 </div>
                 <br>
-                <button class="btn" onclick="restoreBackup()">3. Restore Data from Code</button>
-                <p style="color:red; font-size:0.8rem; text-align:center;">Warning: Restoring will overwrite existing data on this device.</p>
+                <p><strong>Restore Data:</strong><br>Paste the code from your email below:</p>
+                <button class="btn" onclick="restoreBackup()">Restore Data from Code</button>
+                <p style="color:red; font-size:0.8rem; text-align:center; margin-top:10px;">Warning: Restoring will overwrite existing data on this device.</p>
             </div>
         </div>
     </div>
@@ -248,16 +250,21 @@
             c: categories,
             cw: currentWalletId
         };
-        // Encode to Base64 to make it a single string
         const code = btoa(JSON.stringify(data));
         backupText.value = code;
-        alert("Backup generated! Click 'Copy Code' to save it.");
+        alert("Backup generated! You can now click 'Send to Gmail'.");
     }
 
-    function copyBackup() {
-        backupText.select();
-        document.execCommand("copy");
-        alert("Code copied to clipboard! Send this text to your other device.");
+    // NEW EMAIL FUNCTION
+    function emailBackup() {
+        const code = backupText.value.trim();
+        if(!code) {
+            alert("Please click 'Generate Backup' first!");
+            return;
+        }
+        const subject = encodeURIComponent("My Wallet Backup Code");
+        const body = encodeURIComponent("Here is my backup code. Copy everything below and paste it into the app:\n\n" + code);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
     }
 
     function restoreBackup() {
@@ -273,14 +280,14 @@
                 localStorage.setItem('transactions', JSON.stringify(data.t));
                 localStorage.setItem('categories', JSON.stringify(data.c));
                 localStorage.setItem('currentWalletId', data.cw);
-                location.reload(); // Refresh app
+                location.reload(); 
             }
         } catch(e) {
             alert("Invalid Backup Code. Please check and try again.");
         }
     }
 
-    // CORE APP LOGIC (Same as before)
+    // CORE APP LOGIC
     function renderWalletSelector() {
         walletSelect.innerHTML = '';
         wallets.forEach(w => {
