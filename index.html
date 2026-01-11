@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Pro Wallet</title>
+    <title>Pro Wallet v2</title>
     <style>
         /* --- CSS STYLES --- */
         :root {
@@ -20,7 +20,6 @@
             margin: 0; padding: 0;
             display: flex; justify-content: center;
             height: 100vh; overflow: hidden;
-            /* FIX 2: safe-area handling for body */
             padding-top: env(safe-area-inset-top);
         }
 
@@ -51,9 +50,8 @@
             flex: 1; 
             overflow-y: auto; 
             padding: 20px; 
-            /* FIX 3: Extra padding at bottom so last item isn't hidden behind nav + home bar */
             padding-bottom: calc(90px + env(safe-area-inset-bottom)); 
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            -webkit-overflow-scrolling: touch; 
         }
         
         .tab-view { display: none; animation: fadeIn 0.3s; }
@@ -94,6 +92,7 @@
             margin: 25px 0; padding: 15px; width: 100%;
             border-radius: 10px; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
         }
+        .btn-danger { background-color: var(--expense-color); box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3); }
 
         /* TAGS */
         .input-group { display: flex; gap: 5px; }
@@ -121,11 +120,15 @@
         .delete-btn { background: var(--expense-color); border: 0; color: #fff; padding: 5px 10px; border-radius: 5px; margin-left: 10px; cursor: pointer; }
 
         /* SETTINGS TAB */
-        .backup-area { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .section-card { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #eee; }
         .backup-code { font-family: monospace; font-size: 12px; height: 100px; margin-bottom: 10px; width: 100%; box-sizing: border-box; }
         .action-row { display: flex; gap: 10px; }
-        .btn-outline { background: white; border: 2px solid var(--primary-color); color: var(--primary-color); flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;}
+        .btn-outline { background: white; border: 2px solid var(--primary-color); color: var(--primary-color); flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px;}
         .btn-outline:active { background: #f0f9ff; }
+        
+        .manage-tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .manage-tag { background: #f3f4f6; padding: 8px 12px; border-radius: 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; border: 1px solid #ddd; }
+        .manage-tag .del { color: white; background: #ef4444; width: 18px; height: 18px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 12px; font-weight: bold; }
 
         /* BOTTOM NAV */
         .bottom-nav { 
@@ -137,8 +140,6 @@
             position: absolute; 
             bottom: 0; 
             width: 100%; 
-            
-            /* FIX 4: Handle iPhone Home Bar */
             padding-bottom: env(safe-area-inset-bottom);
             height: calc(var(--nav-height) + env(safe-area-inset-bottom));
             box-sizing: border-box;
@@ -151,7 +152,6 @@
             cursor: pointer; 
             color: #888; 
             font-size: 0.9rem;
-            /* Center icon vertically in available space */
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -215,18 +215,34 @@
         </div>
 
         <div id="tab-settings" class="tab-view">
+            <h3>Wallet Settings</h3>
+            <div class="section-card">
+                <p>Current Wallet: <strong id="settings-wallet-name"></strong></p>
+                <div class="action-row">
+                    <button class="btn-outline" onclick="renameWallet()">Rename Wallet</button>
+                    <button class="btn-outline" style="border-color: var(--expense-color); color: var(--expense-color);" onclick="deleteWallet()">Delete Wallet</button>
+                </div>
+            </div>
+
+            <h3>Manage Categories</h3>
+            <div class="section-card">
+                <p style="font-size: 0.9rem; color: #666; margin-bottom:10px;">Click 'x' to delete a category.</p>
+                <div id="manage-categories-list" class="manage-tag-list">
+                    </div>
+            </div>
+
             <h3>Backup & Restore</h3>
-            <div class="backup-area">
-                <p><strong>Save to Gmail:</strong><br>1. Click "Generate Backup".<br>2. Click "Send to Gmail".<br>3. Send email to yourself.<br>4. On new device, open email & copy code.</p>
+            <div class="section-card">
+                <p><strong>Save to Gmail:</strong><br>1. Generate Backup.<br>2. Send to Gmail.<br>3. On new device, paste code below.</p>
                 <textarea id="backup-text" class="backup-code" placeholder="Backup code will appear here..."></textarea>
                 <div class="action-row">
                     <button class="btn-outline" onclick="generateBackup()">1. Generate Backup</button>
                     <button class="btn-outline" style="background-color: #ea4335; color: white; border: none;" onclick="emailBackup()">📧 Send to Gmail</button>
                 </div>
-                <br>
-                <p><strong>Restore Data:</strong><br>Paste the code from your email below:</p>
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+                <p><strong>Restore Data:</strong></p>
                 <button class="btn" onclick="restoreBackup()">Restore Data from Code</button>
-                <p style="color:red; font-size:0.8rem; text-align:center; margin-top:10px;">Warning: Restoring will overwrite existing data on this device.</p>
+                <p style="color:red; font-size:0.8rem; text-align:center; margin-top:5px;">Warning: Overwrites existing data.</p>
             </div>
         </div>
     </div>
@@ -256,6 +272,9 @@
     const filterCategory = document.getElementById('filter-category');
     const walletSelect = document.getElementById('wallet-select');
     const walletNameDisplay = document.getElementById('wallet-name-display');
+    const settingsWalletName = document.getElementById('settings-wallet-name');
+    const manageCategoriesList = document.getElementById('manage-categories-list');
+
     const histInc = document.getElementById('hist-inc');
     const histExp = document.getElementById('hist-exp');
     const histNet = document.getElementById('hist-net');
@@ -267,6 +286,13 @@
     // DATA
     let wallets = JSON.parse(localStorage.getItem('wallets')) || [{id: 'main', name: 'Main Wallet'}];
     let currentWalletId = localStorage.getItem('currentWalletId') || 'main';
+    
+    // Ensure the current wallet actually exists (in case it was deleted externally)
+    if(!wallets.find(w => w.id === currentWalletId)) {
+        currentWalletId = wallets[0].id;
+        localStorage.setItem('currentWalletId', currentWalletId);
+    }
+
     const rawTransactions = JSON.parse(localStorage.getItem('transactions')) || [];
     let transactions = rawTransactions.map(t => {
         if(!t.walletId) t.walletId = 'main'; 
@@ -277,10 +303,86 @@
     let categories = JSON.parse(localStorage.getItem('categories')) || defaultCategories;
 
     function init() {
-        renderWalletSelector(); updateCategoryDropdowns(); updateMonthFilterOptions(); updateValues(); renderHistory(); 
+        renderWalletSelector(); 
+        updateCategoryDropdowns(); 
+        renderManageCategories();
+        updateMonthFilterOptions(); 
+        updateValues(); 
+        renderHistory(); 
     }
 
-    // BACKUP LOGIC
+    // --- NEW FEATURES: WALLET & CATEGORY MANAGEMENT ---
+
+    function renameWallet() {
+        const wallet = wallets.find(w => w.id === currentWalletId);
+        if(!wallet) return;
+        
+        const newName = prompt("Enter new name for this wallet:", wallet.name);
+        if(newName && newName.trim() !== "") {
+            wallet.name = newName.trim();
+            localStorage.setItem('wallets', JSON.stringify(wallets));
+            renderWalletSelector();
+            alert("Wallet renamed successfully.");
+        }
+    }
+
+    function deleteWallet() {
+        if(wallets.length <= 1) {
+            alert("You cannot delete the only remaining wallet.");
+            return;
+        }
+        
+        const wallet = wallets.find(w => w.id === currentWalletId);
+        const confirmMsg = `Are you sure you want to delete "${wallet.name}"?\n\nThis will DELETE ALL transactions in this wallet permanently.`;
+        
+        if(confirm(confirmMsg)) {
+            // 1. Remove transactions for this wallet
+            transactions = transactions.filter(t => t.walletId !== currentWalletId);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            
+            // 2. Remove wallet from list
+            wallets = wallets.filter(w => w.id !== currentWalletId);
+            localStorage.setItem('wallets', JSON.stringify(wallets));
+            
+            // 3. Select the first available wallet
+            currentWalletId = wallets[0].id;
+            localStorage.setItem('currentWalletId', currentWalletId);
+            
+            // 4. Reload UI
+            init();
+            alert("Wallet deleted.");
+        }
+    }
+
+    function renderManageCategories() {
+        manageCategoriesList.innerHTML = '';
+        categories.forEach(cat => {
+            const el = document.createElement('div');
+            el.className = 'manage-tag';
+            el.innerHTML = `${cat} <span class="del" onclick="deleteCategory('${cat}')">×</span>`;
+            manageCategoriesList.appendChild(el);
+        });
+    }
+
+    function deleteCategory(catName) {
+        if(categories.length <= 1) {
+            alert("You must keep at least one category.");
+            return;
+        }
+        if(confirm(`Delete category "${catName}"?`)) {
+            categories = categories.filter(c => c !== catName);
+            localStorage.setItem('categories', JSON.stringify(categories));
+            updateCategoryDropdowns();
+            renderManageCategories();
+            
+            // Remove from current input tags if selected
+            if(currentTags.includes(catName)) {
+                removeTagFromInput(catName);
+            }
+        }
+    }
+
+    // --- EXISTING BACKUP LOGIC ---
     function generateBackup() {
         const data = {
             w: wallets,
@@ -324,7 +426,7 @@
         }
     }
 
-    // CORE APP LOGIC
+    // --- CORE APP LOGIC ---
     function renderWalletSelector() {
         walletSelect.innerHTML = '';
         wallets.forEach(w => {
@@ -333,7 +435,9 @@
             walletSelect.appendChild(opt);
         });
         walletSelect.value = currentWalletId;
-        walletNameDisplay.innerText = wallets.find(w => w.id === currentWalletId).name + " Balance";
+        const wName = wallets.find(w => w.id === currentWalletId).name;
+        walletNameDisplay.innerText = wName + " Balance";
+        settingsWalletName.innerText = wName;
     }
     function addNewWallet() {
         const name = prompt("Enter name for new wallet:");
@@ -347,7 +451,9 @@
     }
     function changeWallet() {
         currentWalletId = walletSelect.value; localStorage.setItem('currentWalletId', currentWalletId);
-        walletNameDisplay.innerText = wallets.find(w => w.id === currentWalletId).name + " Balance";
+        const wName = wallets.find(w => w.id === currentWalletId).name;
+        walletNameDisplay.innerText = wName + " Balance";
+        settingsWalletName.innerText = wName;
         updateValues(); renderHistory();
     }
     function updateCategoryDropdowns() {
@@ -358,10 +464,14 @@
             categoryDropdown.appendChild(option);
         });
         const addOpt = document.createElement('option'); addOpt.value = "NEW_CAT"; addOpt.innerText = "+ Create New Category"; categoryDropdown.appendChild(addOpt);
+        
         const currentFilter = filterCategory.value;
         filterCategory.innerHTML = '<option value="all">All Categories</option>';
         categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; filterCategory.appendChild(option); });
         filterCategory.value = currentFilter;
+        
+        // Refresh manage list as well
+        renderManageCategories();
     }
     categoryDropdown.addEventListener('change', function() {
         if(this.value === 'NEW_CAT') {
