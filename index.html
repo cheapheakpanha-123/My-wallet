@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Pro Wallet</title>
     <style>
         /* --- CSS STYLES --- */
@@ -15,11 +15,13 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             margin: 0; padding: 0;
             display: flex; justify-content: center;
-            height: 100vh; overflow: hidden; 
+            height: 100vh; overflow: hidden;
+            /* FIX 2: safe-area handling for body */
+            padding-top: env(safe-area-inset-top);
         }
 
         .app-container {
@@ -45,7 +47,15 @@
         }
 
         /* CONTENT */
-        .content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; }
+        .content { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 20px; 
+            /* FIX 3: Extra padding at bottom so last item isn't hidden behind nav + home bar */
+            padding-bottom: calc(90px + env(safe-area-inset-bottom)); 
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        }
+        
         .tab-view { display: none; animation: fadeIn 0.3s; }
         .tab-view.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -76,7 +86,7 @@
         input, select, textarea {
             border: 1px solid #ddd; border-radius: 8px; font-size: 16px;
             padding: 12px; width: 100%; box-sizing: border-box; 
-            background-color: #fafafa; outline: none;
+            background-color: #fafafa; outline: none; -webkit-appearance: none;
         }
         .btn {
             cursor: pointer; background-color: var(--primary-color); color: #fff;
@@ -112,14 +122,42 @@
 
         /* SETTINGS TAB */
         .backup-area { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-        .backup-code { font-family: monospace; font-size: 12px; height: 100px; margin-bottom: 10px; }
+        .backup-code { font-family: monospace; font-size: 12px; height: 100px; margin-bottom: 10px; width: 100%; box-sizing: border-box; }
         .action-row { display: flex; gap: 10px; }
         .btn-outline { background: white; border: 2px solid var(--primary-color); color: var(--primary-color); flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;}
         .btn-outline:active { background: #f0f9ff; }
 
         /* BOTTOM NAV */
-        .bottom-nav { height: var(--nav-height); background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; }
-        .nav-item { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; font-size: 0.9rem; }
+        .bottom-nav { 
+            background: white; 
+            display: flex; 
+            justify-content: space-around; 
+            align-items: center; 
+            border-top: 1px solid #ddd; 
+            position: absolute; 
+            bottom: 0; 
+            width: 100%; 
+            
+            /* FIX 4: Handle iPhone Home Bar */
+            padding-bottom: env(safe-area-inset-bottom);
+            height: calc(var(--nav-height) + env(safe-area-inset-bottom));
+            box-sizing: border-box;
+        }
+        
+        .nav-item { 
+            flex: 1; 
+            text-align: center; 
+            padding: 10px; 
+            cursor: pointer; 
+            color: #888; 
+            font-size: 0.9rem;
+            /* Center icon vertically in available space */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: var(--nav-height); 
+        }
+        
         .nav-item.active { color: var(--primary-color); font-weight: bold; }
         .nav-item span { display: block; font-size: 1.2rem; margin-bottom: 2px; }
     </style>
@@ -255,7 +293,6 @@
         alert("Backup generated! You can now click 'Send to Gmail'.");
     }
 
-    // NEW EMAIL FUNCTION
     function emailBackup() {
         const code = backupText.value.trim();
         if(!code) {
