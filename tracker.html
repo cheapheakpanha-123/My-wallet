@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Wallet</title>
+    <style>
+        /* --- CSS STYLES --- */
+        :root {
+            --primary-color: #3b82f6;
+            --income-color: #2ecc71;
+            --expense-color: #e74c3c;
+            --bg-color: #f3f4f6;
+            --nav-height: 60px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0; padding: 0;
+            display: flex; justify-content: center;
+            height: 100vh; overflow: hidden; 
+        }
+
+        .app-container {
+            background-color: white; width: 100%; max-width: 450px;
+            height: 100%; display: flex; flex-direction: column;
+            position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* HEADER */
+        header { background-color: #fff; padding: 10px 15px; border-bottom: 1px solid #eee; z-index: 10; }
+        .wallet-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f8f9fa; padding: 8px; border-radius: 8px; border: 1px solid #eee;
+        }
+        .wallet-select {
+            border: none; background: transparent; font-size: 1rem;
+            font-weight: bold; color: #333; flex: 1; outline: none;
+        }
+        .wallet-add-btn {
+            background: var(--primary-color); color: white; border: none;
+            border-radius: 5px; width: 25px; height: 25px; font-size: 1.2rem;
+            line-height: 1; cursor: pointer; margin-left: 5px;
+        }
+
+        /* CONTENT */
+        .content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; }
+        .tab-view { display: none; animation: fadeIn 0.3s; }
+        .tab-view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* DASHBOARD */
+        .balance-card {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white; padding: 20px; border-radius: 15px;
+            text-align: center; margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+        .balance-card h4 { margin: 0; opacity: 0.8; font-weight: normal; font-size: 0.9rem;}
+        .balance-card h1 { margin: 5px 0 0; font-size: 2.5rem; }
+
+        .inc-exp-container {
+            background-color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 15px; display: flex; justify-content: space-between;
+            margin-bottom: 25px; border-radius: 12px; border: 1px solid #eee;
+        }
+        .inc-exp-container div { flex: 1; text-align: center; }
+        .inc-exp-container div:first-child { border-right: 1px solid #eee; }
+        .money { font-size: 1.1em; font-weight: bold; margin: 5px 0; }
+        .money.plus { color: var(--income-color); }
+        .money.minus { color: var(--expense-color); }
+
+        /* FORMS */
+        label { display: block; margin: 10px 0 5px; font-weight: 600; font-size: 0.9rem; color: #555;}
+        input, select, textarea {
+            border: 1px solid #ddd; border-radius: 8px; font-size: 16px;
+            padding: 12px; width: 100%; box-sizing: border-box; 
+            background-color: #fafafa; outline: none;
+        }
+        .btn {
+            cursor: pointer; background-color: var(--primary-color); color: #fff;
+            border: 0; display: block; font-size: 16px; font-weight: bold;
+            margin: 25px 0; padding: 15px; width: 100%;
+            border-radius: 10px; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        }
+
+        /* TAGS */
+        .input-group { display: flex; gap: 5px; }
+        .input-group select { flex: 1; }
+        .btn-small { padding: 0 15px; background: #eee; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; }
+        .tags-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; min-height: 30px; }
+        .tag-pill { background: #e2e8f0; color: #475569; padding: 4px 10px; border-radius: 15px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; }
+        .tag-pill span { cursor: pointer; font-weight: bold; color: #ef4444; }
+
+        /* HISTORY */
+        .filters { display: flex; gap: 10px; margin-bottom: 10px; position: sticky; top: 0; background: var(--bg-color); padding: 5px 0; z-index: 5; }
+        .history-summary { background: #fff; padding: 15px 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; margin-bottom: 15px; border: 1px solid #eee; }
+        .hs-item { text-align: center; flex: 1; padding: 0 2px; }
+        .hs-item span { display: block; font-size: 0.75rem; color: #888; text-transform: uppercase; }
+        .hs-item strong { display: block; font-size: 0.95rem; margin-top: 4px; }
+        
+        .list { list-style-type: none; padding: 0; }
+        .list li { background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color: #333; display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; border-radius: 10px; }
+        .list li.plus { border-left: 5px solid var(--income-color); }
+        .list li.minus { border-left: 5px solid var(--expense-color); }
+        .item-info { display: flex; flex-direction: column; width: 65%;}
+        .item-date { font-size: 0.75em; color: #888; margin-bottom: 4px; }
+        .item-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+        .item-tag { font-size: 0.7em; background: #eee; color: #555; padding: 2px 6px; border-radius: 4px; }
+        .delete-btn { background: var(--expense-color); border: 0; color: #fff; padding: 5px 10px; border-radius: 5px; margin-left: 10px; cursor: pointer; }
+
+        /* SETTINGS TAB */
+        .backup-area { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .backup-code { font-family: monospace; font-size: 12px; height: 100px; margin-bottom: 10px; }
+        .action-row { display: flex; gap: 10px; }
+        .btn-outline { background: white; border: 2px solid var(--primary-color); color: var(--primary-color); flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;}
+
+        /* BOTTOM NAV */
+        .bottom-nav { height: var(--nav-height); background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; }
+        .nav-item { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; font-size: 0.9rem; }
+        .nav-item.active { color: var(--primary-color); font-weight: bold; }
+        .nav-item span { display: block; font-size: 1.2rem; margin-bottom: 2px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <div class="wallet-bar">
+            <span>Wallet:</span>
+            <select id="wallet-select" class="wallet-select" onchange="changeWallet()"></select>
+            <button class="wallet-add-btn" onclick="addNewWallet()">+</button>
+        </div>
+    </header>
+
+    <div class="content">
+        <div id="tab-dashboard" class="tab-view active">
+            <div class="balance-card">
+                <h4 id="wallet-name-display">Total Balance</h4>
+                <h1 id="balance">$0.00</h1>
+            </div>
+            <div class="inc-exp-container">
+                <div><h4>Income</h4><p id="money-plus" class="money plus">+$0.00</p></div>
+                <div><h4>Expense</h4><p id="money-minus" class="money minus">-$0.00</p></div>
+            </div>
+            <h3>Add Transaction</h3>
+            <form id="form">
+                <div class="form-control"><label>Date</label><input type="date" id="date" /></div>
+                <div class="form-control">
+                    <label>Categories</label>
+                    <div class="input-group">
+                        <select id="category-dropdown"></select>
+                        <button type="button" class="btn-small" onclick="addTagToInput()">+</button>
+                    </div>
+                    <div id="selected-tags" class="tags-container"></div>
+                </div>
+                <div class="form-control"><label>Description</label><input type="text" id="text" placeholder="e.g. Lunch" /></div>
+                <div class="form-control"><label>Amount (Negative = Expense)</label><input type="number" id="amount" placeholder="Enter amount" step="0.01" /></div>
+                <button class="btn">Add Transaction</button>
+            </form>
+        </div>
+
+        <div id="tab-history" class="tab-view">
+            <div class="filters">
+                <select id="filter-month" onchange="renderHistory()"><option value="all">All Months</option></select>
+                <select id="filter-category" onchange="renderHistory()"><option value="all">All Categories</option></select>
+            </div>
+            <div class="history-summary">
+                <div class="hs-item"><span>Income</span><strong id="hist-inc" style="color: var(--income-color)">+$0</strong></div>
+                <div class="hs-item"><span>Expense</span><strong id="hist-exp" style="color: var(--expense-color)">-$0</strong></div>
+                <div class="hs-item"><span>Net</span><strong id="hist-net">$0</strong></div>
+                <div class="hs-item" style="background: #f0f9ff; border-radius: 5px;"><span>Daily Avg</span><strong id="hist-daily" style="color: #0ea5e9">$0</strong></div>
+            </div>
+            <ul id="list" class="list"></ul>
+        </div>
+
+        <div id="tab-settings" class="tab-view">
+            <h3>Backup & Restore</h3>
+            <div class="backup-area">
+                <p><strong>To move data to another device:</strong><br>1. Click "Generate Backup"<br>2. Copy the code<br>3. Send code to new device<br>4. Paste in "Restore" box</p>
+                <textarea id="backup-text" class="backup-code" placeholder="Backup code will appear here..."></textarea>
+                <div class="action-row">
+                    <button class="btn-outline" onclick="generateBackup()">1. Generate Backup</button>
+                    <button class="btn-outline" onclick="copyBackup()">2. Copy Code</button>
+                </div>
+                <br>
+                <button class="btn" onclick="restoreBackup()">3. Restore Data from Code</button>
+                <p style="color:red; font-size:0.8rem; text-align:center;">Warning: Restoring will overwrite existing data on this device.</p>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('dashboard', this)"><span>🏠</span> Dashboard</div>
+        <div class="nav-item" onclick="switchTab('history', this)"><span>📜</span> History</div>
+        <div class="nav-item" onclick="switchTab('settings', this)"><span>⚙️</span> Settings</div>
+    </nav>
+</div>
+
+<script>
+    // VARS
+    const balanceEl = document.getElementById('balance');
+    const moneyPlusEl = document.getElementById('money-plus');
+    const moneyMinusEl = document.getElementById('money-minus');
+    const listEl = document.getElementById('list');
+    const form = document.getElementById('form');
+    const textInput = document.getElementById('text');
+    const amountInput = document.getElementById('amount');
+    const dateInput = document.getElementById('date');
+    const categoryDropdown = document.getElementById('category-dropdown');
+    const selectedTagsContainer = document.getElementById('selected-tags');
+    let currentTags = []; 
+
+    const filterMonth = document.getElementById('filter-month');
+    const filterCategory = document.getElementById('filter-category');
+    const walletSelect = document.getElementById('wallet-select');
+    const walletNameDisplay = document.getElementById('wallet-name-display');
+    const histInc = document.getElementById('hist-inc');
+    const histExp = document.getElementById('hist-exp');
+    const histNet = document.getElementById('hist-net');
+    const histDaily = document.getElementById('hist-daily');
+    const backupText = document.getElementById('backup-text');
+
+    dateInput.valueAsDate = new Date();
+
+    // DATA
+    let wallets = JSON.parse(localStorage.getItem('wallets')) || [{id: 'main', name: 'Main Wallet'}];
+    let currentWalletId = localStorage.getItem('currentWalletId') || 'main';
+    const rawTransactions = JSON.parse(localStorage.getItem('transactions')) || [];
+    let transactions = rawTransactions.map(t => {
+        if(!t.walletId) t.walletId = 'main'; 
+        if(!t.categories) t.categories = t.category ? [t.category] : ['General'];
+        return t;
+    });
+    const defaultCategories = ["Food", "Salary", "Rent", "Transport", "Shopping", "Entertainment", "Health", "Bills", "General"];
+    let categories = JSON.parse(localStorage.getItem('categories')) || defaultCategories;
+
+    function init() {
+        renderWalletSelector(); updateCategoryDropdowns(); updateMonthFilterOptions(); updateValues(); renderHistory(); 
+    }
+
+    // BACKUP LOGIC
+    function generateBackup() {
+        const data = {
+            w: wallets,
+            t: transactions,
+            c: categories,
+            cw: currentWalletId
+        };
+        // Encode to Base64 to make it a single string
+        const code = btoa(JSON.stringify(data));
+        backupText.value = code;
+        alert("Backup generated! Click 'Copy Code' to save it.");
+    }
+
+    function copyBackup() {
+        backupText.select();
+        document.execCommand("copy");
+        alert("Code copied to clipboard! Send this text to your other device.");
+    }
+
+    function restoreBackup() {
+        const code = backupText.value.trim();
+        if(!code) { alert("Please paste a backup code first."); return; }
+        
+        try {
+            const json = atob(code);
+            const data = JSON.parse(json);
+            
+            if(confirm("This will REPLACE all data on this device with the backup. Are you sure?")) {
+                localStorage.setItem('wallets', JSON.stringify(data.w));
+                localStorage.setItem('transactions', JSON.stringify(data.t));
+                localStorage.setItem('categories', JSON.stringify(data.c));
+                localStorage.setItem('currentWalletId', data.cw);
+                location.reload(); // Refresh app
+            }
+        } catch(e) {
+            alert("Invalid Backup Code. Please check and try again.");
+        }
+    }
+
+    // CORE APP LOGIC (Same as before)
+    function renderWalletSelector() {
+        walletSelect.innerHTML = '';
+        wallets.forEach(w => {
+            const opt = document.createElement('option');
+            opt.value = w.id; opt.innerText = w.name;
+            walletSelect.appendChild(opt);
+        });
+        walletSelect.value = currentWalletId;
+        walletNameDisplay.innerText = wallets.find(w => w.id === currentWalletId).name + " Balance";
+    }
+    function addNewWallet() {
+        const name = prompt("Enter name for new wallet:");
+        if(name) {
+            const newId = 'w_' + Date.now();
+            wallets.push({ id: newId, name: name });
+            localStorage.setItem('wallets', JSON.stringify(wallets));
+            currentWalletId = newId; localStorage.setItem('currentWalletId', currentWalletId);
+            renderWalletSelector(); updateValues(); renderHistory();
+        }
+    }
+    function changeWallet() {
+        currentWalletId = walletSelect.value; localStorage.setItem('currentWalletId', currentWalletId);
+        walletNameDisplay.innerText = wallets.find(w => w.id === currentWalletId).name + " Balance";
+        updateValues(); renderHistory();
+    }
+    function updateCategoryDropdowns() {
+        categoryDropdown.innerHTML = '';
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat; option.innerText = cat;
+            categoryDropdown.appendChild(option);
+        });
+        const addOpt = document.createElement('option'); addOpt.value = "NEW_CAT"; addOpt.innerText = "+ Create New Category"; categoryDropdown.appendChild(addOpt);
+        const currentFilter = filterCategory.value;
+        filterCategory.innerHTML = '<option value="all">All Categories</option>';
+        categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; filterCategory.appendChild(option); });
+        filterCategory.value = currentFilter;
+    }
+    categoryDropdown.addEventListener('change', function() {
+        if(this.value === 'NEW_CAT') {
+            const newCat = prompt("Enter new category name:");
+            if (newCat && newCat.trim() !== "") {
+                const formatted = newCat.trim();
+                if(!categories.includes(formatted)) {
+                    categories.push(formatted); categories.sort(); localStorage.setItem('categories', JSON.stringify(categories)); updateCategoryDropdowns(); categoryDropdown.value = formatted;
+                }
+            } else { categoryDropdown.value = categories[0]; }
+        }
+    });
+    function addTagToInput() {
+        const cat = categoryDropdown.value; if(!currentTags.includes(cat) && cat !== "NEW_CAT") { currentTags.push(cat); renderInputTags(); }
+    }
+    function removeTagFromInput(cat) { currentTags = currentTags.filter(t => t !== cat); renderInputTags(); }
+    function renderInputTags() {
+        selectedTagsContainer.innerHTML = '';
+        currentTags.forEach(cat => {
+            const pill = document.createElement('div'); pill.className = 'tag-pill';
+            pill.innerHTML = `${cat} <span onclick="removeTagFromInput('${cat}')">×</span>`; selectedTagsContainer.appendChild(pill);
+        });
+    }
+    function addTransaction(e) {
+        e.preventDefault();
+        if (textInput.value.trim() === '' || amountInput.value.trim() === '') { alert('Please add a description and amount'); return; }
+        let finalCategories = currentTags;
+        if(finalCategories.length === 0) { finalCategories = categoryDropdown.value !== "NEW_CAT" ? [categoryDropdown.value] : ["General"]; }
+        const transaction = { id: Date.now(), walletId: currentWalletId, text: textInput.value, amount: +amountInput.value, date: dateInput.value, categories: finalCategories };
+        transactions.push(transaction); localStorage.setItem('transactions', JSON.stringify(transactions));
+        updateValues(); renderHistory(); 
+        textInput.value = ''; amountInput.value = ''; dateInput.valueAsDate = new Date(); currentTags = []; renderInputTags(); alert("Transaction Added!");
+    }
+    function updateValues() {
+        const walletTrans = transactions.filter(t => t.walletId === currentWalletId);
+        const amounts = walletTrans.map(t => t.amount);
+        const total = amounts.reduce((acc, item) => (acc += item), 0).toFixed(2);
+        const income = amounts.filter(item => item > 0).reduce((acc, item) => (acc += item), 0).toFixed(2);
+        const expense = (amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0) * -1).toFixed(2);
+        balanceEl.innerText = `$${total}`; moneyPlusEl.innerText = `+$${income}`; moneyMinusEl.innerText = `-$${expense}`;
+    }
+    function renderHistory() {
+        listEl.innerHTML = '';
+        const selectedMonth = filterMonth.value; const selectedCat = filterCategory.value;
+        let filtered = transactions.filter(t => t.walletId === currentWalletId);
+        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+        filtered = filtered.filter(t => {
+            const tMonth = t.date ? t.date.substring(0, 7) : 'no-date';
+            const monthMatch = (selectedMonth === 'all') || (tMonth === selectedMonth);
+            const catMatch = (selectedCat === 'all') || (t.categories && t.categories.includes(selectedCat));
+            return monthMatch && catMatch;
+        });
+        const fAmounts = filtered.map(t => t.amount);
+        const fTotal = fAmounts.reduce((acc, i) => acc + i, 0);
+        const fInc = fAmounts.filter(i => i > 0).reduce((acc, i) => acc + i, 0);
+        const fExp = (fAmounts.filter(i => i < 0).reduce((acc, i) => acc + i, 0) * -1);
+        histInc.innerText = `+$${fInc.toFixed(2)}`; histExp.innerText = `-$${fExp.toFixed(2)}`;
+        histNet.innerText = (fTotal >= 0 ? '+' : '') + `$${fTotal.toFixed(2)}`; histNet.style.color = fTotal >= 0 ? 'var(--income-color)' : 'var(--expense-color)';
+        if(selectedMonth !== 'all') {
+            const [y, m] = selectedMonth.split('-'); const daysInMonth = new Date(y, m, 0).getDate();
+            const dailyVal = fTotal / daysInMonth; histDaily.innerText = (dailyVal >= 0 ? '+' : '') + `$${dailyVal.toFixed(2)}`;
+        } else { histDaily.innerText = "-"; }
+        if(filtered.length === 0) { listEl.innerHTML = '<li style="text-align:center; background:none; box-shadow:none; color:#888;">No transactions found.</li>'; return; }
+        filtered.forEach(t => {
+            const sign = t.amount < 0 ? '-' : '+'; const item = document.createElement('li'); item.classList.add(t.amount < 0 ? 'minus' : 'plus');
+            const tagsHtml = t.categories.map(c => `<span class="item-tag">${c}</span>`).join('');
+            item.innerHTML = `<div class="item-info"><span class="item-date">${t.date || 'No Date'}</span><strong>${t.text}</strong><div class="item-tags">${tagsHtml}</div></div><span>${sign}$${Math.abs(t.amount).toFixed(2)}</span><button class="delete-btn" onclick="removeTransaction(${t.id})">×</button>`;
+            listEl.appendChild(item);
+        });
+    }
+    function updateMonthFilterOptions() {
+        const currentSelection = filterMonth.value; const uniqueMonths = new Set();
+        transactions.forEach(t => { if(t.date && t.date.length >= 7) uniqueMonths.add(t.date.substring(0, 7)); });
+        const sortedMonths = Array.from(uniqueMonths).sort().reverse();
+        filterMonth.innerHTML = '<option value="all">All Months</option>';
+        sortedMonths.forEach(m => { const option = document.createElement('option'); option.value = m; option.innerText = m; filterMonth.appendChild(option); });
+        filterMonth.value = currentSelection;
+    }
+    function removeTransaction(id) { if(confirm("Delete this transaction?")) { transactions = transactions.filter(t => t.id !== id); localStorage.setItem('transactions', JSON.stringify(transactions)); updateValues(); renderHistory(); } }
+    window.switchTab = function(tabName, navEl) {
+        document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + tabName).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        if(navEl) navEl.classList.add('active');
+        if(tabName === 'history') { renderHistory(); }
+    }
+    form.addEventListener('submit', addTransaction);
+    init();
+</script>
+</body>
+</html>
