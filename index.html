@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Pro Wallet v6</title>
+    <title>Pro Wallet v7 (Edit Mode)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
@@ -15,6 +15,7 @@
             --primary-color: #3b82f6;
             --income-color: #2ecc71;
             --expense-color: #e74c3c;
+            --edit-color: #f39c12;
             --bg-color: #f3f4f6;
             --nav-height: 60px;
         }
@@ -94,8 +95,11 @@
         .btn {
             cursor: pointer; background-color: var(--primary-color); color: #fff;
             border: 0; display: block; font-size: 16px; font-weight: bold;
-            margin: 25px 0; padding: 15px; width: 100%;
+            margin: 25px 0 10px 0; padding: 15px; width: 100%;
             border-radius: 10px; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        }
+        .btn-cancel {
+            background-color: #95a5a6; color: white; display: none; /* Hidden by default */
         }
 
         /* TAGS */
@@ -125,22 +129,21 @@
         .list li { background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color: #333; display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; border-radius: 10px; }
         .list li.plus { border-left: 5px solid var(--income-color); }
         .list li.minus { border-left: 5px solid var(--expense-color); }
-        .item-info { display: flex; flex-direction: column; width: 65%;}
+        .item-info { display: flex; flex-direction: column; width: 60%;}
         .item-date { font-size: 0.75em; color: #888; margin-bottom: 4px; }
         .item-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
         .item-tag { font-size: 0.7em; background: #eee; color: #555; padding: 2px 6px; border-radius: 4px; }
-        .delete-btn { background: var(--expense-color); border: 0; color: #fff; padding: 5px 10px; border-radius: 5px; margin-left: 10px; cursor: pointer; }
+        
+        .action-btns { display: flex; gap: 5px; }
+        .action-btn { border: 0; color: #fff; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.9rem; }
+        .delete-btn { background: var(--expense-color); }
+        .edit-btn { background: var(--edit-color); }
 
         /* STATS TAB */
         .stats-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
         .stats-header h3 { margin: 0; }
         .sort-select { padding: 5px; border-radius: 5px; border: 1px solid #ddd; font-size: 0.85rem; background: white; }
-        
-        .current-period-badge { 
-            background: #e0f2fe; color: #0284c7; padding: 5px 10px; border-radius: 5px; 
-            font-size: 0.8rem; font-weight: bold; margin-bottom: 15px; display: inline-block;
-        }
-
+        .current-period-badge { background: #e0f2fe; color: #0284c7; padding: 5px 10px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; margin-bottom: 15px; display: inline-block; }
         .chart-container { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; }
         .chart-container h4 { margin: 0 0 15px; text-align: center; color: #444; }
         .no-data-msg { text-align: center; color: #999; font-size: 0.9rem; padding: 20px; font-style: italic; }
@@ -148,10 +151,7 @@
         /* TOGGLE FILTERS */
         .toggle-container { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; border-top: 1px solid #eee; padding-top: 10px; }
         .toggle-label { width: 100%; text-align: center; font-size: 0.75rem; color: #888; margin-bottom: 5px; }
-        .cat-toggle { 
-            padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; cursor: pointer; border: 1px solid #ddd;
-            background: #fff; color: #888; user-select: none;
-        }
+        .cat-toggle { padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; cursor: pointer; border: 1px solid #ddd; background: #fff; color: #888; user-select: none; }
         .cat-toggle.active { background: var(--income-color); color: white; border-color: var(--income-color); font-weight: bold; }
 
         /* SETTINGS */
@@ -164,16 +164,8 @@
         .manage-tag .del { color: white; background: #ef4444; width: 18px; height: 18px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 12px; font-weight: bold; }
 
         /* BOTTOM NAV */
-        .bottom-nav { 
-            background: white; display: flex; justify-content: space-around; align-items: center; 
-            border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; 
-            padding-bottom: env(safe-area-inset-bottom);
-            height: calc(var(--nav-height) + env(safe-area-inset-bottom)); box-sizing: border-box;
-        }
-        .nav-item { 
-            flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; font-size: 0.9rem;
-            display: flex; flex-direction: column; justify-content: center; height: var(--nav-height); 
-        }
+        .bottom-nav { background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #ddd; position: absolute; bottom: 0; width: 100%; padding-bottom: env(safe-area-inset-bottom); height: calc(var(--nav-height) + env(safe-area-inset-bottom)); box-sizing: border-box; }
+        .nav-item { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; font-size: 0.9rem; display: flex; flex-direction: column; justify-content: center; height: var(--nav-height); }
         .nav-item.active { color: var(--primary-color); font-weight: bold; }
         .nav-item span { display: block; font-size: 1.2rem; margin-bottom: 2px; }
     </style>
@@ -199,7 +191,8 @@
                 <div><h4>Income</h4><p id="money-plus" class="money plus">+$0.00</p></div>
                 <div><h4>Expense</h4><p id="money-minus" class="money minus">-$0.00</p></div>
             </div>
-            <h3>Add Transaction</h3>
+            
+            <h3 id="form-header">Add Transaction</h3>
             <form id="form">
                 <div class="form-control"><label>Date</label><input type="date" id="date" /></div>
                 <div class="form-control">
@@ -212,7 +205,8 @@
                 </div>
                 <div class="form-control"><label>Description</label><input type="text" id="text" placeholder="e.g. Salary / Lunch" /></div>
                 <div class="form-control"><label>Amount (Negative = Expense)</label><input type="number" id="amount" placeholder="Enter amount" step="0.01" /></div>
-                <button class="btn">Add Transaction</button>
+                <button id="submit-btn" class="btn">Add Transaction</button>
+                <button type="button" id="cancel-btn" class="btn btn-cancel" onclick="cancelEditMode()">Cancel Edit</button>
             </form>
         </div>
         
@@ -313,7 +307,12 @@
     const dateInput = document.getElementById('date');
     const categoryDropdown = document.getElementById('category-dropdown');
     const selectedTagsContainer = document.getElementById('selected-tags');
+    const submitBtn = document.getElementById('submit-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const formHeader = document.getElementById('form-header');
+    
     let currentTags = []; 
+    let editingTransactionId = null; // Stores ID if editing
 
     const filterMonth = document.getElementById('filter-month');
     const filterCategory = document.getElementById('filter-category');
@@ -335,7 +334,7 @@
     // Chart instances & State
     let expenseChartInstance = null;
     let incomeChartInstance = null;
-    let excludedIncomeCategories = new Set(); // Stores categories user hid
+    let excludedIncomeCategories = new Set(); 
 
     // DATA
     let wallets = JSON.parse(localStorage.getItem('wallets')) || [{id: 'main', name: 'Main Wallet'}];
@@ -364,131 +363,150 @@
         renderHistory(); 
     }
 
+    // --- EDIT MODE LOGIC ---
+    function editTransaction(id) {
+        const t = transactions.find(x => x.id === id);
+        if(!t) return;
+
+        // Populate Form
+        textInput.value = t.text;
+        amountInput.value = t.amount;
+        dateInput.value = t.date;
+        currentTags = [...t.categories];
+        renderInputTags();
+
+        // UI Changes
+        editingTransactionId = id;
+        formHeader.innerText = "Edit Transaction";
+        submitBtn.innerText = "Update Transaction";
+        submitBtn.style.background = "#f39c12"; // Orange
+        cancelBtn.style.display = "block";
+
+        // Go to dashboard
+        switchTab('dashboard');
+        document.querySelector('.content').scrollTop = 0; // Scroll top
+    }
+
+    function cancelEditMode() {
+        editingTransactionId = null;
+        textInput.value = '';
+        amountInput.value = '';
+        dateInput.valueAsDate = new Date();
+        currentTags = [];
+        renderInputTags();
+
+        // Reset UI
+        formHeader.innerText = "Add Transaction";
+        submitBtn.innerText = "Add Transaction";
+        submitBtn.style.background = ""; // Reset to CSS default
+        cancelBtn.style.display = "none";
+    }
+
+    function addTransaction(e) {
+        e.preventDefault();
+        if (textInput.value.trim() === '' || amountInput.value.trim() === '') { alert('Missing description or amount'); return; }
+        
+        let finalCategories = currentTags; 
+        if(finalCategories.length === 0) finalCategories = categoryDropdown.value !== "NEW_CAT" ? [categoryDropdown.value] : ["General"];
+
+        if(editingTransactionId) {
+            // UPDATE EXISTING
+            const index = transactions.findIndex(t => t.id === editingTransactionId);
+            if(index !== -1) {
+                transactions[index] = { 
+                    ...transactions[index], 
+                    text: textInput.value, 
+                    amount: +amountInput.value, 
+                    date: dateInput.value, 
+                    categories: finalCategories 
+                };
+                alert("Transaction Updated!");
+            }
+            cancelEditMode(); // Resets form and UI
+        } else {
+            // ADD NEW
+            const transaction = { id: Date.now(), walletId: currentWalletId, text: textInput.value, amount: +amountInput.value, date: dateInput.value, categories: finalCategories };
+            transactions.push(transaction); 
+            textInput.value = ''; amountInput.value = ''; dateInput.valueAsDate = new Date(); currentTags = []; renderInputTags(); 
+            alert("Transaction Added!");
+        }
+
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        updateValues(); renderHistory(); 
+    }
+
     // --- CHART LOGIC ---
     function renderStats() {
         if(!window.Chart) return;
-
-        // 1. Get Date Filter from History Tab
         const selectedMonth = filterMonth.value;
         statsPeriodDisplay.innerText = selectedMonth === 'all' ? "Showing: All Time" : `Showing: ${selectedMonth}`;
-
-        // 2. Filter Data by Date
         const currentData = transactions.filter(t => {
-            const isWallet = t.walletId === currentWalletId;
-            const isDate = selectedMonth === 'all' || (t.date && t.date.startsWith(selectedMonth));
-            return isWallet && isDate;
+            return (t.walletId === currentWalletId) && (selectedMonth === 'all' || (t.date && t.date.startsWith(selectedMonth)));
         });
-
         const sortType = chartSortSelect.value;
         const colorPalette = ['#3b82f6', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#34495e', '#7f8c8d'];
 
-        // Helper: Process Data
         function getChartData(type) {
             const totals = {};
             const isIncome = type === 'income';
-            
             currentData.forEach(t => {
                 const isTarget = isIncome ? t.amount > 0 : t.amount < 0;
                 if(isTarget) {
                     t.categories.forEach(cat => {
-                        // CHECK EXCLUSION (Only for Income per request)
                         if (isIncome && excludedIncomeCategories.has(cat)) return;
                         totals[cat] = (totals[cat] || 0) + Math.abs(t.amount);
                     });
                 }
             });
-            
             const entries = Object.entries(totals);
             if(entries.length === 0) return null;
-
             entries.sort((a, b) => {
                 if(sortType === 'high-low') return b[1] - a[1];
                 if(sortType === 'low-high') return a[1] - b[1];
                 if(sortType === 'az') return a[0].localeCompare(b[0]);
                 return 0;
             });
-
-            return {
-                labels: entries.map(e => e[0]),
-                data: entries.map(e => e[1])
-            };
+            return { labels: entries.map(e => e[0]), data: entries.map(e => e[1]) };
         }
 
-        // --- RENDER INCOME CHART ---
         const incData = getChartData('income');
         const incCanvas = document.getElementById('incomeChart');
         const incMsg = document.getElementById('income-msg');
-        
         if(incomeChartInstance) incomeChartInstance.destroy();
 
-        if(!incData && excludedIncomeCategories.size === 0) { // No data at all
-            incCanvas.style.display = 'none';
-            incMsg.style.display = 'block';
-            document.getElementById('income-toggle-container').style.display = 'none';
+        if(!incData && excludedIncomeCategories.size === 0) { 
+            incCanvas.style.display = 'none'; incMsg.style.display = 'block'; document.getElementById('income-toggle-container').style.display = 'none';
         } else {
-            // Even if chart is empty because everything is excluded, show toggle container
-            incCanvas.style.display = incData ? 'block' : 'none';
-            incMsg.style.display = incData ? 'none' : 'block';
+            incCanvas.style.display = incData ? 'block' : 'none'; incMsg.style.display = incData ? 'none' : 'block';
             if(!incData) incMsg.innerText = "All categories hidden.";
-            
             if(incData) {
-                incomeChartInstance = new Chart(incCanvas, {
-                    type: 'doughnut',
-                    data: { labels: incData.labels, datasets: [{ data: incData.data, backgroundColor: colorPalette, borderWidth: 1 }] },
-                    options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } }
-                });
+                incomeChartInstance = new Chart(incCanvas, { type: 'doughnut', data: { labels: incData.labels, datasets: [{ data: incData.data, backgroundColor: colorPalette, borderWidth: 1 }] }, options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } } });
             }
             renderIncomeToggles(currentData);
         }
 
-        // --- RENDER EXPENSE CHART ---
         const expData = getChartData('expense');
         const expCanvas = document.getElementById('expenseChart');
         const expMsg = document.getElementById('expense-msg');
-
         if(expenseChartInstance) expenseChartInstance.destroy();
-
-        if(!expData) {
-            expCanvas.style.display = 'none';
-            expMsg.style.display = 'block';
-        } else {
-            expCanvas.style.display = 'block';
-            expMsg.style.display = 'none';
-            expenseChartInstance = new Chart(expCanvas, {
-                type: 'doughnut',
-                data: { labels: expData.labels, datasets: [{ data: expData.data, backgroundColor: colorPalette, borderWidth: 1 }] },
-                options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } }
-            });
+        if(!expData) { expCanvas.style.display = 'none'; expMsg.style.display = 'block'; } 
+        else {
+            expCanvas.style.display = 'block'; expMsg.style.display = 'none';
+            expenseChartInstance = new Chart(expCanvas, { type: 'doughnut', data: { labels: expData.labels, datasets: [{ data: expData.data, backgroundColor: colorPalette, borderWidth: 1 }] }, options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } } });
         }
     }
 
     function renderIncomeToggles(data) {
-        // Find all categories that appeared in INCOME transactions for this period
         const incomeCats = new Set();
-        data.forEach(t => {
-            if(t.amount > 0) t.categories.forEach(c => incomeCats.add(c));
-        });
-
-        const container = document.getElementById('income-toggles');
-        container.innerHTML = '';
-        
-        if(incomeCats.size === 0) {
-            document.getElementById('income-toggle-container').style.display = 'none';
-            return;
-        }
-
+        data.forEach(t => { if(t.amount > 0) t.categories.forEach(c => incomeCats.add(c)); });
+        const container = document.getElementById('income-toggles'); container.innerHTML = '';
+        if(incomeCats.size === 0) { document.getElementById('income-toggle-container').style.display = 'none'; return; }
         document.getElementById('income-toggle-container').style.display = 'flex';
-        
         Array.from(incomeCats).sort().forEach(cat => {
             const btn = document.createElement('div');
             const isActive = !excludedIncomeCategories.has(cat);
-            btn.className = `cat-toggle ${isActive ? 'active' : ''}`;
-            btn.innerText = cat;
-            btn.onclick = () => {
-                if(isActive) excludedIncomeCategories.add(cat);
-                else excludedIncomeCategories.delete(cat);
-                renderStats(); // Re-render chart
-            };
+            btn.className = `cat-toggle ${isActive ? 'active' : ''}`; btn.innerText = cat;
+            btn.onclick = () => { if(isActive) excludedIncomeCategories.add(cat); else excludedIncomeCategories.delete(cat); renderStats(); };
             container.appendChild(btn);
         });
     }
@@ -496,12 +514,10 @@
     // --- OTHER FEATURES ---
     function generatePDF(type) {
         if (!window.jspdf) { alert("PDF Library not loaded. Check internet."); return; }
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
         const wName = wallets.find(w => w.id === currentWalletId).name;
         const selectedMonthVal = filterMonth.value;
         let pdfTitle = "", pdfData = [];
-
         if (type === 'monthly') {
             if (selectedMonthVal === 'all') { alert("Please select a month first."); return; }
             pdfTitle = `Monthly Report: ${selectedMonthVal}`;
@@ -518,52 +534,32 @@
         const totalExp = pdfData.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0);
         const totalNet = totalInc + totalExp;
 
-        doc.setFontSize(18); doc.text(wName, 14, 20);
-        doc.setFontSize(14); doc.text(pdfTitle, 14, 28);
-        doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 34);
+        doc.setFontSize(18); doc.text(wName, 14, 20); doc.setFontSize(14); doc.text(pdfTitle, 14, 28); doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 34);
         doc.setDrawColor(200); doc.setFillColor(245, 245, 245); doc.rect(14, 40, 180, 20, 'FD'); 
-        doc.setTextColor(46, 204, 113); doc.text(`Income: +$${totalInc.toFixed(2)}`, 20, 52);
-        doc.setTextColor(231, 76, 60); doc.text(`Expense: -$${Math.abs(totalExp).toFixed(2)}`, 80, 52);
-        doc.setTextColor(0); doc.text(`Net: $${totalNet.toFixed(2)}`, 140, 52);
+        doc.setTextColor(46, 204, 113); doc.text(`Income: +$${totalInc.toFixed(2)}`, 20, 52); doc.setTextColor(231, 76, 60); doc.text(`Expense: -$${Math.abs(totalExp).toFixed(2)}`, 80, 52); doc.setTextColor(0); doc.text(`Net: $${totalNet.toFixed(2)}`, 140, 52);
 
         const tableBody = pdfData.map(t => [ t.date, t.text, t.categories.join(', '), (t.amount > 0 ? '+' : '') + t.amount.toFixed(2) ]);
-        doc.autoTable({
-            startY: 65, head: [['Date', 'Description', 'Category', 'Amount']], body: tableBody, theme: 'grid',
-            headStyles: { fillColor: [59, 130, 246] },
-            columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
-            didParseCell: function(data) {
-                if (data.section === 'body' && data.column.index === 3) {
-                    const val = parseFloat(data.cell.raw.replace('+', ''));
-                    data.cell.styles.textColor = val < 0 ? [231, 76, 60] : [46, 204, 113];
-                }
-            }
-        });
+        doc.autoTable({ startY: 65, head: [['Date', 'Description', 'Category', 'Amount']], body: tableBody, theme: 'grid', headStyles: { fillColor: [59, 130, 246] }, columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } }, didParseCell: function(data) { if (data.section === 'body' && data.column.index === 3) { const val = parseFloat(data.cell.raw.replace('+', '')); data.cell.styles.textColor = val < 0 ? [231, 76, 60] : [46, 204, 113]; } } });
         doc.save(`${wName.replace(/\s+/g, '_')}_${type}_report.pdf`);
     }
 
     function renameWallet() {
-        const wallet = wallets.find(w => w.id === currentWalletId);
-        if(!wallet) return;
+        const wallet = wallets.find(w => w.id === currentWalletId); if(!wallet) return;
         const newName = prompt("Enter new name for this wallet:", wallet.name);
         if(newName && newName.trim() !== "") { wallet.name = newName.trim(); localStorage.setItem('wallets', JSON.stringify(wallets)); renderWalletSelector(); }
     }
     function deleteWallet() {
         if(wallets.length <= 1) { alert("Cannot delete the only wallet."); return; }
         if(confirm(`Delete wallet?`)) {
-            transactions = transactions.filter(t => t.walletId !== currentWalletId);
-            localStorage.setItem('transactions', JSON.stringify(transactions));
-            wallets = wallets.filter(w => w.id !== currentWalletId);
-            localStorage.setItem('wallets', JSON.stringify(wallets));
-            currentWalletId = wallets[0].id; localStorage.setItem('currentWalletId', currentWalletId);
-            init();
+            transactions = transactions.filter(t => t.walletId !== currentWalletId); localStorage.setItem('transactions', JSON.stringify(transactions));
+            wallets = wallets.filter(w => w.id !== currentWalletId); localStorage.setItem('wallets', JSON.stringify(wallets));
+            currentWalletId = wallets[0].id; localStorage.setItem('currentWalletId', currentWalletId); init();
         }
     }
     function renderManageCategories() {
         manageCategoriesList.innerHTML = '';
         categories.forEach(cat => {
-            const el = document.createElement('div'); el.className = 'manage-tag';
-            el.innerHTML = `${cat} <span class="del" onclick="deleteCategory('${cat}')">×</span>`;
-            manageCategoriesList.appendChild(el);
+            const el = document.createElement('div'); el.className = 'manage-tag'; el.innerHTML = `${cat} <span class="del" onclick="deleteCategory('${cat}')">×</span>`; manageCategoriesList.appendChild(el);
         });
     }
     function deleteCategory(catName) {
@@ -574,80 +570,29 @@
             if(currentTags.includes(catName)) removeTagFromInput(catName);
         }
     }
-    function generateBackup() {
-        const data = { w: wallets, t: transactions, c: categories, cw: currentWalletId };
-        backupText.value = btoa(JSON.stringify(data));
-        alert("Backup generated!");
-    }
-    function emailBackup() {
-        const code = backupText.value.trim(); if(!code) { alert("Generate Backup first!"); return; }
-        window.location.href = `mailto:?subject=Wallet Backup&body=${encodeURIComponent(code)}`;
-    }
+    function generateBackup() { const data = { w: wallets, t: transactions, c: categories, cw: currentWalletId }; backupText.value = btoa(JSON.stringify(data)); alert("Backup generated!"); }
+    function emailBackup() { const code = backupText.value.trim(); if(!code) { alert("Generate Backup first!"); return; } window.location.href = `mailto:?subject=Wallet Backup&body=${encodeURIComponent(code)}`; }
     function restoreBackup() {
         const code = backupText.value.trim(); if(!code) return;
-        try {
-            const data = JSON.parse(atob(code));
-            if(confirm("REPLACE all data with backup?")) {
-                localStorage.setItem('wallets', JSON.stringify(data.w)); localStorage.setItem('transactions', JSON.stringify(data.t));
-                localStorage.setItem('categories', JSON.stringify(data.c)); localStorage.setItem('currentWalletId', data.cw);
-                location.reload(); 
-            }
-        } catch(e) { alert("Invalid Backup Code."); }
+        try { const data = JSON.parse(atob(code)); if(confirm("REPLACE all data with backup?")) { localStorage.setItem('wallets', JSON.stringify(data.w)); localStorage.setItem('transactions', JSON.stringify(data.t)); localStorage.setItem('categories', JSON.stringify(data.c)); localStorage.setItem('currentWalletId', data.cw); location.reload(); } } catch(e) { alert("Invalid Backup Code."); }
     }
-    function renderWalletSelector() {
-        walletSelect.innerHTML = '';
-        wallets.forEach(w => { const opt = document.createElement('option'); opt.value = w.id; opt.innerText = w.name; walletSelect.appendChild(opt); });
-        walletSelect.value = currentWalletId;
-        const wName = wallets.find(w => w.id === currentWalletId).name;
-        walletNameDisplay.innerText = wName + " Balance"; settingsWalletName.innerText = wName;
-    }
-    function addNewWallet() {
-        const name = prompt("Name:"); if(name) {
-            const newId = 'w_' + Date.now(); wallets.push({ id: newId, name: name });
-            localStorage.setItem('wallets', JSON.stringify(wallets)); currentWalletId = newId; localStorage.setItem('currentWalletId', currentWalletId);
-            renderWalletSelector(); updateValues(); renderHistory();
-        }
-    }
-    function changeWallet() {
-        currentWalletId = walletSelect.value; localStorage.setItem('currentWalletId', currentWalletId);
-        const wName = wallets.find(w => w.id === currentWalletId).name;
-        walletNameDisplay.innerText = wName + " Balance"; settingsWalletName.innerText = wName;
-        updateValues(); renderHistory();
-    }
+    function renderWalletSelector() { walletSelect.innerHTML = ''; wallets.forEach(w => { const opt = document.createElement('option'); opt.value = w.id; opt.innerText = w.name; walletSelect.appendChild(opt); }); walletSelect.value = currentWalletId; const wName = wallets.find(w => w.id === currentWalletId).name; walletNameDisplay.innerText = wName + " Balance"; settingsWalletName.innerText = wName; }
+    function addNewWallet() { const name = prompt("Name:"); if(name) { const newId = 'w_' + Date.now(); wallets.push({ id: newId, name: name }); localStorage.setItem('wallets', JSON.stringify(wallets)); currentWalletId = newId; localStorage.setItem('currentWalletId', currentWalletId); renderWalletSelector(); updateValues(); renderHistory(); } }
+    function changeWallet() { currentWalletId = walletSelect.value; localStorage.setItem('currentWalletId', currentWalletId); const wName = wallets.find(w => w.id === currentWalletId).name; walletNameDisplay.innerText = wName + " Balance"; settingsWalletName.innerText = wName; updateValues(); renderHistory(); }
     function updateCategoryDropdowns() {
-        categoryDropdown.innerHTML = '';
-        categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; categoryDropdown.appendChild(option); });
+        categoryDropdown.innerHTML = ''; categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; categoryDropdown.appendChild(option); });
         const addOpt = document.createElement('option'); addOpt.value = "NEW_CAT"; addOpt.innerText = "+ Create New Category"; categoryDropdown.appendChild(addOpt);
-        const currentFilter = filterCategory.value;
-        filterCategory.innerHTML = '<option value="all">All Categories</option>';
-        categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; filterCategory.appendChild(option); });
-        filterCategory.value = currentFilter;
-        renderManageCategories();
+        const currentFilter = filterCategory.value; filterCategory.innerHTML = '<option value="all">All Categories</option>'; categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; filterCategory.appendChild(option); }); filterCategory.value = currentFilter; renderManageCategories();
     }
     categoryDropdown.addEventListener('change', function() {
         if(this.value === 'NEW_CAT') {
             const newCat = prompt("Category Name:");
-            if (newCat && newCat.trim() !== "") {
-                const formatted = newCat.trim();
-                if(!categories.includes(formatted)) { categories.push(formatted); categories.sort(); localStorage.setItem('categories', JSON.stringify(categories)); updateCategoryDropdowns(); categoryDropdown.value = formatted; }
-            } else { categoryDropdown.value = categories[0]; }
+            if (newCat && newCat.trim() !== "") { const formatted = newCat.trim(); if(!categories.includes(formatted)) { categories.push(formatted); categories.sort(); localStorage.setItem('categories', JSON.stringify(categories)); updateCategoryDropdowns(); categoryDropdown.value = formatted; } } else { categoryDropdown.value = categories[0]; }
         }
     });
     function addTagToInput() { const cat = categoryDropdown.value; if(!currentTags.includes(cat) && cat !== "NEW_CAT") { currentTags.push(cat); renderInputTags(); } }
     function removeTagFromInput(cat) { currentTags = currentTags.filter(t => t !== cat); renderInputTags(); }
-    function renderInputTags() {
-        selectedTagsContainer.innerHTML = '';
-        currentTags.forEach(cat => { const pill = document.createElement('div'); pill.className = 'tag-pill'; pill.innerHTML = `${cat} <span onclick="removeTagFromInput('${cat}')">×</span>`; selectedTagsContainer.appendChild(pill); });
-    }
-    function addTransaction(e) {
-        e.preventDefault();
-        if (textInput.value.trim() === '' || amountInput.value.trim() === '') { alert('Missing description or amount'); return; }
-        let finalCategories = currentTags; if(finalCategories.length === 0) finalCategories = categoryDropdown.value !== "NEW_CAT" ? [categoryDropdown.value] : ["General"];
-        const transaction = { id: Date.now(), walletId: currentWalletId, text: textInput.value, amount: +amountInput.value, date: dateInput.value, categories: finalCategories };
-        transactions.push(transaction); localStorage.setItem('transactions', JSON.stringify(transactions));
-        updateValues(); renderHistory(); 
-        textInput.value = ''; amountInput.value = ''; dateInput.valueAsDate = new Date(); currentTags = []; renderInputTags(); alert("Added!");
-    }
+    function renderInputTags() { selectedTagsContainer.innerHTML = ''; currentTags.forEach(cat => { const pill = document.createElement('div'); pill.className = 'tag-pill'; pill.innerHTML = `${cat} <span onclick="removeTagFromInput('${cat}')">×</span>`; selectedTagsContainer.appendChild(pill); }); }
     function updateValues() {
         const walletTrans = transactions.filter(t => t.walletId === currentWalletId);
         const amounts = walletTrans.map(t => t.amount);
@@ -679,14 +624,11 @@
         filtered.forEach(t => {
             const sign = t.amount < 0 ? '-' : '+'; const item = document.createElement('li'); item.classList.add(t.amount < 0 ? 'minus' : 'plus');
             const tagsHtml = t.categories.map(c => `<span class="item-tag">${c}</span>`).join('');
-            item.innerHTML = `<div class="item-info"><span class="item-date">${t.date || 'No Date'}</span><strong>${t.text}</strong><div class="item-tags">${tagsHtml}</div></div><span>${sign}$${Math.abs(t.amount).toFixed(2)}</span><button class="delete-btn" onclick="removeTransaction(${t.id})">×</button>`;
+            item.innerHTML = `<div class="item-info"><span class="item-date">${t.date || 'No Date'}</span><strong>${t.text}</strong><div class="item-tags">${tagsHtml}</div></div><span>${sign}$${Math.abs(t.amount).toFixed(2)}</span>
+            <div class="action-btns"><button class="action-btn edit-btn" onclick="editTransaction(${t.id})">✏️</button><button class="action-btn delete-btn" onclick="removeTransaction(${t.id})">×</button></div>`;
             listEl.appendChild(item);
         });
-        
-        // --- NEW: UPDATE STATS IF TAB IS ACTIVE ---
-        if(document.getElementById('tab-stats').classList.contains('active')) {
-            renderStats();
-        }
+        if(document.getElementById('tab-stats').classList.contains('active')) renderStats();
     }
     function updateMonthFilterOptions() {
         const currentSelection = filterMonth.value; const uniqueMonths = new Set();
@@ -697,16 +639,12 @@
         filterMonth.value = currentSelection;
     }
     function removeTransaction(id) { if(confirm("Delete this transaction?")) { transactions = transactions.filter(t => t.id !== id); localStorage.setItem('transactions', JSON.stringify(transactions)); updateValues(); renderHistory(); } }
-    
-    // TAB SWITCHER
     window.switchTab = function(tabName, navEl) {
         document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
         document.getElementById('tab-' + tabName).classList.add('active');
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         if(navEl) navEl.classList.add('active');
-        
-        if(tabName === 'history') renderHistory();
-        if(tabName === 'stats') renderStats(); // Load charts when tab opens
+        if(tabName === 'history') renderHistory(); if(tabName === 'stats') renderStats();
     }
     form.addEventListener('submit', addTransaction);
     init();
