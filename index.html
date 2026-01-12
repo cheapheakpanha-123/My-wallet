@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Pro Wallet v3 (PDF)</title>
+    <title>Pro Wallet v6</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         /* --- CSS STYLES --- */
@@ -105,18 +106,15 @@
         .tag-pill { background: #e2e8f0; color: #475569; padding: 4px 10px; border-radius: 15px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; }
         .tag-pill span { cursor: pointer; font-weight: bold; color: #ef4444; }
 
-        /* HISTORY & PDF BUTTONS */
+        /* HISTORY & PDF */
         .filters { display: flex; gap: 10px; margin-bottom: 10px; position: sticky; top: 0; background: var(--bg-color); padding: 5px 0; z-index: 5; flex-wrap: wrap;}
         .filters select { flex: 1; min-width: 100px; }
-        
-        /* New PDF Buttons */
         .pdf-actions { display: flex; gap: 10px; margin-bottom: 15px; }
         .btn-pdf { 
             flex: 1; padding: 8px; font-size: 0.85rem; background: #fff; border: 1px solid #ccc; 
             border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;
             color: #444; font-weight: 600;
         }
-        .btn-pdf:active { background: #eee; }
 
         .history-summary { background: #fff; padding: 15px 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; margin-bottom: 15px; border: 1px solid #eee; }
         .hs-item { text-align: center; flex: 1; padding: 0 2px; }
@@ -133,12 +131,34 @@
         .item-tag { font-size: 0.7em; background: #eee; color: #555; padding: 2px 6px; border-radius: 4px; }
         .delete-btn { background: var(--expense-color); border: 0; color: #fff; padding: 5px 10px; border-radius: 5px; margin-left: 10px; cursor: pointer; }
 
+        /* STATS TAB */
+        .stats-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .stats-header h3 { margin: 0; }
+        .sort-select { padding: 5px; border-radius: 5px; border: 1px solid #ddd; font-size: 0.85rem; background: white; }
+        
+        .current-period-badge { 
+            background: #e0f2fe; color: #0284c7; padding: 5px 10px; border-radius: 5px; 
+            font-size: 0.8rem; font-weight: bold; margin-bottom: 15px; display: inline-block;
+        }
+
+        .chart-container { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; }
+        .chart-container h4 { margin: 0 0 15px; text-align: center; color: #444; }
+        .no-data-msg { text-align: center; color: #999; font-size: 0.9rem; padding: 20px; font-style: italic; }
+
+        /* TOGGLE FILTERS */
+        .toggle-container { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; border-top: 1px solid #eee; padding-top: 10px; }
+        .toggle-label { width: 100%; text-align: center; font-size: 0.75rem; color: #888; margin-bottom: 5px; }
+        .cat-toggle { 
+            padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; cursor: pointer; border: 1px solid #ddd;
+            background: #fff; color: #888; user-select: none;
+        }
+        .cat-toggle.active { background: var(--income-color); color: white; border-color: var(--income-color); font-weight: bold; }
+
         /* SETTINGS */
         .section-card { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #eee; }
         .backup-code { font-family: monospace; font-size: 12px; height: 100px; margin-bottom: 10px; width: 100%; box-sizing: border-box; }
         .action-row { display: flex; gap: 10px; }
         .btn-outline { background: white; border: 2px solid var(--primary-color); color: var(--primary-color); flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px;}
-        
         .manage-tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
         .manage-tag { background: #f3f4f6; padding: 8px 12px; border-radius: 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; border: 1px solid #ddd; }
         .manage-tag .del { color: white; background: #ef4444; width: 18px; height: 18px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 12px; font-weight: bold; }
@@ -190,10 +210,38 @@
                     </div>
                     <div id="selected-tags" class="tags-container"></div>
                 </div>
-                <div class="form-control"><label>Description</label><input type="text" id="text" placeholder="e.g. Lunch" /></div>
+                <div class="form-control"><label>Description</label><input type="text" id="text" placeholder="e.g. Salary / Lunch" /></div>
                 <div class="form-control"><label>Amount (Negative = Expense)</label><input type="number" id="amount" placeholder="Enter amount" step="0.01" /></div>
                 <button class="btn">Add Transaction</button>
             </form>
+        </div>
+        
+        <div id="tab-stats" class="tab-view">
+            <div class="stats-header">
+                <h3>Statistics</h3>
+                <select id="chart-sort" class="sort-select" onchange="renderStats()">
+                    <option value="high-low">Sort: High to Low</option>
+                    <option value="low-high">Sort: Low to High</option>
+                    <option value="az">Sort: Name (A-Z)</option>
+                </select>
+            </div>
+            <div id="stats-period-display" class="current-period-badge">All Time</div>
+            
+            <div class="chart-container">
+                <h4 style="color: var(--income-color)">Income Breakdown</h4>
+                <div id="income-msg" class="no-data-msg" style="display:none">No Income data for this period.</div>
+                <canvas id="incomeChart"></canvas>
+                <div id="income-toggle-container" class="toggle-container" style="display:none;">
+                    <div class="toggle-label">Tap to Hide/Show:</div>
+                    <div id="income-toggles"></div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h4 style="color: var(--expense-color)">Expense Breakdown</h4>
+                <div id="expense-msg" class="no-data-msg" style="display:none">No Expense data for this period.</div>
+                <canvas id="expenseChart"></canvas>
+            </div>
         </div>
 
         <div id="tab-history" class="tab-view">
@@ -201,12 +249,10 @@
                 <select id="filter-month" onchange="renderHistory()"><option value="all">All Months</option></select>
                 <select id="filter-category" onchange="renderHistory()"><option value="all">All Categories</option></select>
             </div>
-            
             <div class="pdf-actions">
                 <button class="btn-pdf" onclick="generatePDF('monthly')">📄 Monthly Report</button>
                 <button class="btn-pdf" onclick="generatePDF('yearly')">📊 Yearly Report</button>
             </div>
-
             <div class="history-summary">
                 <div class="hs-item"><span>Income</span><strong id="hist-inc" style="color: var(--income-color)">+$0</strong></div>
                 <div class="hs-item"><span>Expense</span><strong id="hist-exp" style="color: var(--expense-color)">-$0</strong></div>
@@ -243,13 +289,13 @@
                 <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
                 <p><strong>Restore Data:</strong></p>
                 <button class="btn" onclick="restoreBackup()">Restore Data from Code</button>
-                <p style="color:red; font-size:0.8rem; text-align:center; margin-top:5px;">Warning: Overwrites existing data.</p>
             </div>
         </div>
     </div>
 
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('dashboard', this)"><span>🏠</span> Dashboard</div>
+        <div class="nav-item" onclick="switchTab('stats', this)"><span>📊</span> Stats</div>
         <div class="nav-item" onclick="switchTab('history', this)"><span>📜</span> History</div>
         <div class="nav-item" onclick="switchTab('settings', this)"><span>⚙️</span> Settings</div>
     </nav>
@@ -275,6 +321,8 @@
     const walletNameDisplay = document.getElementById('wallet-name-display');
     const settingsWalletName = document.getElementById('settings-wallet-name');
     const manageCategoriesList = document.getElementById('manage-categories-list');
+    const chartSortSelect = document.getElementById('chart-sort');
+    const statsPeriodDisplay = document.getElementById('stats-period-display');
 
     const histInc = document.getElementById('hist-inc');
     const histExp = document.getElementById('hist-exp');
@@ -283,6 +331,11 @@
     const backupText = document.getElementById('backup-text');
 
     dateInput.valueAsDate = new Date();
+
+    // Chart instances & State
+    let expenseChartInstance = null;
+    let incomeChartInstance = null;
+    let excludedIncomeCategories = new Set(); // Stores categories user hid
 
     // DATA
     let wallets = JSON.parse(localStorage.getItem('wallets')) || [{id: 'main', name: 'Main Wallet'}];
@@ -311,207 +364,259 @@
         renderHistory(); 
     }
 
-    // --- NEW: PDF GENERATION LOGIC ---
+    // --- CHART LOGIC ---
+    function renderStats() {
+        if(!window.Chart) return;
+
+        // 1. Get Date Filter from History Tab
+        const selectedMonth = filterMonth.value;
+        statsPeriodDisplay.innerText = selectedMonth === 'all' ? "Showing: All Time" : `Showing: ${selectedMonth}`;
+
+        // 2. Filter Data by Date
+        const currentData = transactions.filter(t => {
+            const isWallet = t.walletId === currentWalletId;
+            const isDate = selectedMonth === 'all' || (t.date && t.date.startsWith(selectedMonth));
+            return isWallet && isDate;
+        });
+
+        const sortType = chartSortSelect.value;
+        const colorPalette = ['#3b82f6', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#34495e', '#7f8c8d'];
+
+        // Helper: Process Data
+        function getChartData(type) {
+            const totals = {};
+            const isIncome = type === 'income';
+            
+            currentData.forEach(t => {
+                const isTarget = isIncome ? t.amount > 0 : t.amount < 0;
+                if(isTarget) {
+                    t.categories.forEach(cat => {
+                        // CHECK EXCLUSION (Only for Income per request)
+                        if (isIncome && excludedIncomeCategories.has(cat)) return;
+                        totals[cat] = (totals[cat] || 0) + Math.abs(t.amount);
+                    });
+                }
+            });
+            
+            const entries = Object.entries(totals);
+            if(entries.length === 0) return null;
+
+            entries.sort((a, b) => {
+                if(sortType === 'high-low') return b[1] - a[1];
+                if(sortType === 'low-high') return a[1] - b[1];
+                if(sortType === 'az') return a[0].localeCompare(b[0]);
+                return 0;
+            });
+
+            return {
+                labels: entries.map(e => e[0]),
+                data: entries.map(e => e[1])
+            };
+        }
+
+        // --- RENDER INCOME CHART ---
+        const incData = getChartData('income');
+        const incCanvas = document.getElementById('incomeChart');
+        const incMsg = document.getElementById('income-msg');
+        
+        if(incomeChartInstance) incomeChartInstance.destroy();
+
+        if(!incData && excludedIncomeCategories.size === 0) { // No data at all
+            incCanvas.style.display = 'none';
+            incMsg.style.display = 'block';
+            document.getElementById('income-toggle-container').style.display = 'none';
+        } else {
+            // Even if chart is empty because everything is excluded, show toggle container
+            incCanvas.style.display = incData ? 'block' : 'none';
+            incMsg.style.display = incData ? 'none' : 'block';
+            if(!incData) incMsg.innerText = "All categories hidden.";
+            
+            if(incData) {
+                incomeChartInstance = new Chart(incCanvas, {
+                    type: 'doughnut',
+                    data: { labels: incData.labels, datasets: [{ data: incData.data, backgroundColor: colorPalette, borderWidth: 1 }] },
+                    options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } }
+                });
+            }
+            renderIncomeToggles(currentData);
+        }
+
+        // --- RENDER EXPENSE CHART ---
+        const expData = getChartData('expense');
+        const expCanvas = document.getElementById('expenseChart');
+        const expMsg = document.getElementById('expense-msg');
+
+        if(expenseChartInstance) expenseChartInstance.destroy();
+
+        if(!expData) {
+            expCanvas.style.display = 'none';
+            expMsg.style.display = 'block';
+        } else {
+            expCanvas.style.display = 'block';
+            expMsg.style.display = 'none';
+            expenseChartInstance = new Chart(expCanvas, {
+                type: 'doughnut',
+                data: { labels: expData.labels, datasets: [{ data: expData.data, backgroundColor: colorPalette, borderWidth: 1 }] },
+                options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } }
+            });
+        }
+    }
+
+    function renderIncomeToggles(data) {
+        // Find all categories that appeared in INCOME transactions for this period
+        const incomeCats = new Set();
+        data.forEach(t => {
+            if(t.amount > 0) t.categories.forEach(c => incomeCats.add(c));
+        });
+
+        const container = document.getElementById('income-toggles');
+        container.innerHTML = '';
+        
+        if(incomeCats.size === 0) {
+            document.getElementById('income-toggle-container').style.display = 'none';
+            return;
+        }
+
+        document.getElementById('income-toggle-container').style.display = 'flex';
+        
+        Array.from(incomeCats).sort().forEach(cat => {
+            const btn = document.createElement('div');
+            const isActive = !excludedIncomeCategories.has(cat);
+            btn.className = `cat-toggle ${isActive ? 'active' : ''}`;
+            btn.innerText = cat;
+            btn.onclick = () => {
+                if(isActive) excludedIncomeCategories.add(cat);
+                else excludedIncomeCategories.delete(cat);
+                renderStats(); // Re-render chart
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    // --- OTHER FEATURES ---
     function generatePDF(type) {
         if (!window.jspdf) { alert("PDF Library not loaded. Check internet."); return; }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
         const wName = wallets.find(w => w.id === currentWalletId).name;
         const selectedMonthVal = filterMonth.value;
-        let pdfTitle = "";
-        let pdfData = [];
+        let pdfTitle = "", pdfData = [];
 
-        // 1. FILTER DATA
         if (type === 'monthly') {
-            if (selectedMonthVal === 'all') {
-                alert("Please select a specific month in the filter dropdown first.");
-                return;
-            }
+            if (selectedMonthVal === 'all') { alert("Please select a month first."); return; }
             pdfTitle = `Monthly Report: ${selectedMonthVal}`;
             pdfData = transactions.filter(t => t.walletId === currentWalletId && t.date.startsWith(selectedMonthVal));
         } else if (type === 'yearly') {
-            // If a month is selected (e.g., 2025-10), use 2025. If 'all', use current year.
             let year = selectedMonthVal === 'all' ? new Date().getFullYear().toString() : selectedMonthVal.substring(0, 4);
             pdfTitle = `Yearly Report: ${year}`;
             pdfData = transactions.filter(t => t.walletId === currentWalletId && t.date.startsWith(year));
         }
-
-        if(pdfData.length === 0) { alert("No transactions found for this period."); return; }
-
-        // Sort by date
+        if(pdfData.length === 0) { alert("No data found."); return; }
         pdfData.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        // Calculate Totals for PDF
+        
         const totalInc = pdfData.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0);
         const totalExp = pdfData.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0);
         const totalNet = totalInc + totalExp;
 
-        // 2. CREATE PDF HEADER
-        doc.setFontSize(18);
-        doc.text(wName, 14, 20);
-        doc.setFontSize(14);
-        doc.text(pdfTitle, 14, 28);
-        doc.setFontSize(10);
-        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 34);
+        doc.setFontSize(18); doc.text(wName, 14, 20);
+        doc.setFontSize(14); doc.text(pdfTitle, 14, 28);
+        doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 34);
+        doc.setDrawColor(200); doc.setFillColor(245, 245, 245); doc.rect(14, 40, 180, 20, 'FD'); 
+        doc.setTextColor(46, 204, 113); doc.text(`Income: +$${totalInc.toFixed(2)}`, 20, 52);
+        doc.setTextColor(231, 76, 60); doc.text(`Expense: -$${Math.abs(totalExp).toFixed(2)}`, 80, 52);
+        doc.setTextColor(0); doc.text(`Net: $${totalNet.toFixed(2)}`, 140, 52);
 
-        // 3. SUMMARY BOX
-        doc.setDrawColor(200);
-        doc.setFillColor(245, 245, 245);
-        doc.rect(14, 40, 180, 20, 'FD'); // Box
-        
-        doc.setFontSize(10);
-        doc.setTextColor(46, 204, 113); // Green
-        doc.text(`Income: +$${totalInc.toFixed(2)}`, 20, 52);
-        
-        doc.setTextColor(231, 76, 60); // Red
-        doc.text(`Expense: -$${Math.abs(totalExp).toFixed(2)}`, 80, 52);
-        
-        doc.setTextColor(0); // Black
-        doc.text(`Net: $${totalNet.toFixed(2)}`, 140, 52);
-
-        // 4. GENERATE TABLE
-        const tableBody = pdfData.map(t => [
-            t.date,
-            t.text,
-            t.categories.join(', '),
-            (t.amount > 0 ? '+' : '') + t.amount.toFixed(2)
-        ]);
-
+        const tableBody = pdfData.map(t => [ t.date, t.text, t.categories.join(', '), (t.amount > 0 ? '+' : '') + t.amount.toFixed(2) ]);
         doc.autoTable({
-            startY: 65,
-            head: [['Date', 'Description', 'Category', 'Amount']],
-            body: tableBody,
-            theme: 'grid',
+            startY: 65, head: [['Date', 'Description', 'Category', 'Amount']], body: tableBody, theme: 'grid',
             headStyles: { fillColor: [59, 130, 246] },
-            columnStyles: {
-                3: { halign: 'right', fontStyle: 'bold' }
-            },
+            columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
             didParseCell: function(data) {
-                // Color the Amount column
                 if (data.section === 'body' && data.column.index === 3) {
                     const val = parseFloat(data.cell.raw.replace('+', ''));
-                    if (val < 0) data.cell.styles.textColor = [231, 76, 60]; // Red
-                    else data.cell.styles.textColor = [46, 204, 113]; // Green
+                    data.cell.styles.textColor = val < 0 ? [231, 76, 60] : [46, 204, 113];
                 }
             }
         });
-
-        // 5. SAVE
         doc.save(`${wName.replace(/\s+/g, '_')}_${type}_report.pdf`);
     }
-
-    // --- EXISTING FEATURES ---
 
     function renameWallet() {
         const wallet = wallets.find(w => w.id === currentWalletId);
         if(!wallet) return;
         const newName = prompt("Enter new name for this wallet:", wallet.name);
-        if(newName && newName.trim() !== "") {
-            wallet.name = newName.trim();
-            localStorage.setItem('wallets', JSON.stringify(wallets));
-            renderWalletSelector();
-        }
+        if(newName && newName.trim() !== "") { wallet.name = newName.trim(); localStorage.setItem('wallets', JSON.stringify(wallets)); renderWalletSelector(); }
     }
-
     function deleteWallet() {
-        if(wallets.length <= 1) { alert("You cannot delete the only remaining wallet."); return; }
-        const wallet = wallets.find(w => w.id === currentWalletId);
-        if(confirm(`Delete "${wallet.name}" and ALL its transactions?`)) {
+        if(wallets.length <= 1) { alert("Cannot delete the only wallet."); return; }
+        if(confirm(`Delete wallet?`)) {
             transactions = transactions.filter(t => t.walletId !== currentWalletId);
             localStorage.setItem('transactions', JSON.stringify(transactions));
             wallets = wallets.filter(w => w.id !== currentWalletId);
             localStorage.setItem('wallets', JSON.stringify(wallets));
-            currentWalletId = wallets[0].id;
-            localStorage.setItem('currentWalletId', currentWalletId);
+            currentWalletId = wallets[0].id; localStorage.setItem('currentWalletId', currentWalletId);
             init();
         }
     }
-
     function renderManageCategories() {
         manageCategoriesList.innerHTML = '';
         categories.forEach(cat => {
-            const el = document.createElement('div');
-            el.className = 'manage-tag';
+            const el = document.createElement('div'); el.className = 'manage-tag';
             el.innerHTML = `${cat} <span class="del" onclick="deleteCategory('${cat}')">×</span>`;
             manageCategoriesList.appendChild(el);
         });
     }
-
     function deleteCategory(catName) {
         if(categories.length <= 1) { alert("Must keep one category."); return; }
         if(confirm(`Delete category "${catName}"?`)) {
-            categories = categories.filter(c => c !== catName);
-            localStorage.setItem('categories', JSON.stringify(categories));
-            updateCategoryDropdowns();
-            renderManageCategories();
+            categories = categories.filter(c => c !== catName); localStorage.setItem('categories', JSON.stringify(categories));
+            updateCategoryDropdowns(); renderManageCategories();
             if(currentTags.includes(catName)) removeTagFromInput(catName);
         }
     }
-
     function generateBackup() {
         const data = { w: wallets, t: transactions, c: categories, cw: currentWalletId };
         backupText.value = btoa(JSON.stringify(data));
-        alert("Backup generated! You can now click 'Send to Gmail'.");
+        alert("Backup generated!");
     }
-
     function emailBackup() {
-        const code = backupText.value.trim();
-        if(!code) { alert("Please click 'Generate Backup' first!"); return; }
+        const code = backupText.value.trim(); if(!code) { alert("Generate Backup first!"); return; }
         window.location.href = `mailto:?subject=Wallet Backup&body=${encodeURIComponent(code)}`;
     }
-
     function restoreBackup() {
-        const code = backupText.value.trim();
-        if(!code) return;
+        const code = backupText.value.trim(); if(!code) return;
         try {
             const data = JSON.parse(atob(code));
             if(confirm("REPLACE all data with backup?")) {
-                localStorage.setItem('wallets', JSON.stringify(data.w));
-                localStorage.setItem('transactions', JSON.stringify(data.t));
-                localStorage.setItem('categories', JSON.stringify(data.c));
-                localStorage.setItem('currentWalletId', data.cw);
+                localStorage.setItem('wallets', JSON.stringify(data.w)); localStorage.setItem('transactions', JSON.stringify(data.t));
+                localStorage.setItem('categories', JSON.stringify(data.c)); localStorage.setItem('currentWalletId', data.cw);
                 location.reload(); 
             }
         } catch(e) { alert("Invalid Backup Code."); }
     }
-
     function renderWalletSelector() {
         walletSelect.innerHTML = '';
-        wallets.forEach(w => {
-            const opt = document.createElement('option');
-            opt.value = w.id; opt.innerText = w.name;
-            walletSelect.appendChild(opt);
-        });
+        wallets.forEach(w => { const opt = document.createElement('option'); opt.value = w.id; opt.innerText = w.name; walletSelect.appendChild(opt); });
         walletSelect.value = currentWalletId;
         const wName = wallets.find(w => w.id === currentWalletId).name;
-        walletNameDisplay.innerText = wName + " Balance";
-        settingsWalletName.innerText = wName;
+        walletNameDisplay.innerText = wName + " Balance"; settingsWalletName.innerText = wName;
     }
     function addNewWallet() {
-        const name = prompt("Enter name for new wallet:");
-        if(name) {
-            const newId = 'w_' + Date.now();
-            wallets.push({ id: newId, name: name });
-            localStorage.setItem('wallets', JSON.stringify(wallets));
-            currentWalletId = newId; localStorage.setItem('currentWalletId', currentWalletId);
+        const name = prompt("Name:"); if(name) {
+            const newId = 'w_' + Date.now(); wallets.push({ id: newId, name: name });
+            localStorage.setItem('wallets', JSON.stringify(wallets)); currentWalletId = newId; localStorage.setItem('currentWalletId', currentWalletId);
             renderWalletSelector(); updateValues(); renderHistory();
         }
     }
     function changeWallet() {
         currentWalletId = walletSelect.value; localStorage.setItem('currentWalletId', currentWalletId);
         const wName = wallets.find(w => w.id === currentWalletId).name;
-        walletNameDisplay.innerText = wName + " Balance";
-        settingsWalletName.innerText = wName;
+        walletNameDisplay.innerText = wName + " Balance"; settingsWalletName.innerText = wName;
         updateValues(); renderHistory();
     }
     function updateCategoryDropdowns() {
         categoryDropdown.innerHTML = '';
-        categories.forEach(cat => {
-            const option = document.createElement('option');
-            option.value = cat; option.innerText = cat;
-            categoryDropdown.appendChild(option);
-        });
+        categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; categoryDropdown.appendChild(option); });
         const addOpt = document.createElement('option'); addOpt.value = "NEW_CAT"; addOpt.innerText = "+ Create New Category"; categoryDropdown.appendChild(addOpt);
         const currentFilter = filterCategory.value;
         filterCategory.innerHTML = '<option value="all">All Categories</option>';
@@ -521,35 +626,27 @@
     }
     categoryDropdown.addEventListener('change', function() {
         if(this.value === 'NEW_CAT') {
-            const newCat = prompt("Enter new category name:");
+            const newCat = prompt("Category Name:");
             if (newCat && newCat.trim() !== "") {
                 const formatted = newCat.trim();
-                if(!categories.includes(formatted)) {
-                    categories.push(formatted); categories.sort(); localStorage.setItem('categories', JSON.stringify(categories)); updateCategoryDropdowns(); categoryDropdown.value = formatted;
-                }
+                if(!categories.includes(formatted)) { categories.push(formatted); categories.sort(); localStorage.setItem('categories', JSON.stringify(categories)); updateCategoryDropdowns(); categoryDropdown.value = formatted; }
             } else { categoryDropdown.value = categories[0]; }
         }
     });
-    function addTagToInput() {
-        const cat = categoryDropdown.value; if(!currentTags.includes(cat) && cat !== "NEW_CAT") { currentTags.push(cat); renderInputTags(); }
-    }
+    function addTagToInput() { const cat = categoryDropdown.value; if(!currentTags.includes(cat) && cat !== "NEW_CAT") { currentTags.push(cat); renderInputTags(); } }
     function removeTagFromInput(cat) { currentTags = currentTags.filter(t => t !== cat); renderInputTags(); }
     function renderInputTags() {
         selectedTagsContainer.innerHTML = '';
-        currentTags.forEach(cat => {
-            const pill = document.createElement('div'); pill.className = 'tag-pill';
-            pill.innerHTML = `${cat} <span onclick="removeTagFromInput('${cat}')">×</span>`; selectedTagsContainer.appendChild(pill);
-        });
+        currentTags.forEach(cat => { const pill = document.createElement('div'); pill.className = 'tag-pill'; pill.innerHTML = `${cat} <span onclick="removeTagFromInput('${cat}')">×</span>`; selectedTagsContainer.appendChild(pill); });
     }
     function addTransaction(e) {
         e.preventDefault();
-        if (textInput.value.trim() === '' || amountInput.value.trim() === '') { alert('Please add a description and amount'); return; }
-        let finalCategories = currentTags;
-        if(finalCategories.length === 0) { finalCategories = categoryDropdown.value !== "NEW_CAT" ? [categoryDropdown.value] : ["General"]; }
+        if (textInput.value.trim() === '' || amountInput.value.trim() === '') { alert('Missing description or amount'); return; }
+        let finalCategories = currentTags; if(finalCategories.length === 0) finalCategories = categoryDropdown.value !== "NEW_CAT" ? [categoryDropdown.value] : ["General"];
         const transaction = { id: Date.now(), walletId: currentWalletId, text: textInput.value, amount: +amountInput.value, date: dateInput.value, categories: finalCategories };
         transactions.push(transaction); localStorage.setItem('transactions', JSON.stringify(transactions));
         updateValues(); renderHistory(); 
-        textInput.value = ''; amountInput.value = ''; dateInput.valueAsDate = new Date(); currentTags = []; renderInputTags(); alert("Transaction Added!");
+        textInput.value = ''; amountInput.value = ''; dateInput.valueAsDate = new Date(); currentTags = []; renderInputTags(); alert("Added!");
     }
     function updateValues() {
         const walletTrans = transactions.filter(t => t.walletId === currentWalletId);
@@ -566,9 +663,7 @@
         filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
         filtered = filtered.filter(t => {
             const tMonth = t.date ? t.date.substring(0, 7) : 'no-date';
-            const monthMatch = (selectedMonth === 'all') || (tMonth === selectedMonth);
-            const catMatch = (selectedCat === 'all') || (t.categories && t.categories.includes(selectedCat));
-            return monthMatch && catMatch;
+            return ((selectedMonth === 'all') || (tMonth === selectedMonth)) && ((selectedCat === 'all') || (t.categories && t.categories.includes(selectedCat)));
         });
         const fAmounts = filtered.map(t => t.amount);
         const fTotal = fAmounts.reduce((acc, i) => acc + i, 0);
@@ -587,6 +682,11 @@
             item.innerHTML = `<div class="item-info"><span class="item-date">${t.date || 'No Date'}</span><strong>${t.text}</strong><div class="item-tags">${tagsHtml}</div></div><span>${sign}$${Math.abs(t.amount).toFixed(2)}</span><button class="delete-btn" onclick="removeTransaction(${t.id})">×</button>`;
             listEl.appendChild(item);
         });
+        
+        // --- NEW: UPDATE STATS IF TAB IS ACTIVE ---
+        if(document.getElementById('tab-stats').classList.contains('active')) {
+            renderStats();
+        }
     }
     function updateMonthFilterOptions() {
         const currentSelection = filterMonth.value; const uniqueMonths = new Set();
@@ -597,12 +697,16 @@
         filterMonth.value = currentSelection;
     }
     function removeTransaction(id) { if(confirm("Delete this transaction?")) { transactions = transactions.filter(t => t.id !== id); localStorage.setItem('transactions', JSON.stringify(transactions)); updateValues(); renderHistory(); } }
+    
+    // TAB SWITCHER
     window.switchTab = function(tabName, navEl) {
         document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
         document.getElementById('tab-' + tabName).classList.add('active');
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         if(navEl) navEl.classList.add('active');
-        if(tabName === 'history') { renderHistory(); }
+        
+        if(tabName === 'history') renderHistory();
+        if(tabName === 'stats') renderStats(); // Load charts when tab opens
     }
     form.addEventListener('submit', addTransaction);
     init();
