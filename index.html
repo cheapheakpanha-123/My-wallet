@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Pro Wallet v7 (Edit Mode)</title>
+    <title>Pro Wallet v8 (Calendar)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
@@ -85,6 +85,32 @@
         .money.plus { color: var(--income-color); }
         .money.minus { color: var(--expense-color); }
 
+        /* CALENDAR TAB STYLES */
+        .calendar-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-controls h3 { margin: 0; font-size: 1.2rem; }
+        .cal-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 5px 10px; color: #555; }
+        
+        .calendar-summary { display: flex; justify-content: space-between; margin-bottom: 15px; text-align: center; background: #f9fafb; padding: 10px; border-radius: 8px; border: 1px solid #eee;}
+        .cal-sum-item { flex: 1; }
+        .cal-sum-item span { display: block; font-size: 0.7rem; color: #888; text-transform: uppercase; }
+        .cal-sum-item strong { display: block; font-size: 0.9rem; }
+
+        .week-header { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 5px; text-align: center; font-weight: bold; color: #888; font-size: 0.8rem; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        
+        .day-cell { 
+            background: #fff; border: 1px solid #eee; border-radius: 5px; min-height: 60px; padding: 5px; 
+            display: flex; flex-direction: column; align-items: center; position: relative;
+        }
+        .day-cell.empty { background: transparent; border: none; }
+        .day-cell.today { border: 2px solid var(--primary-color); }
+        .day-num { font-size: 0.9rem; font-weight: bold; color: #333; margin-bottom: 2px; }
+        
+        .day-val { font-size: 0.65rem; margin-top: 1px; font-weight: 600; }
+        .day-val.inc { color: var(--income-color); }
+        .day-val.exp { color: var(--expense-color); }
+
+
         /* FORMS */
         label { display: block; margin: 10px 0 5px; font-weight: 600; font-size: 0.9rem; color: #555;}
         input, select, textarea {
@@ -98,9 +124,7 @@
             margin: 25px 0 10px 0; padding: 15px; width: 100%;
             border-radius: 10px; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
         }
-        .btn-cancel {
-            background-color: #95a5a6; color: white; display: none; /* Hidden by default */
-        }
+        .btn-cancel { background-color: #95a5a6; color: white; display: none; }
 
         /* TAGS */
         .input-group { display: flex; gap: 5px; }
@@ -147,8 +171,6 @@
         .chart-container { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; }
         .chart-container h4 { margin: 0 0 15px; text-align: center; color: #444; }
         .no-data-msg { text-align: center; color: #999; font-size: 0.9rem; padding: 20px; font-style: italic; }
-
-        /* TOGGLE FILTERS */
         .toggle-container { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; border-top: 1px solid #eee; padding-top: 10px; }
         .toggle-label { width: 100%; text-align: center; font-size: 0.75rem; color: #888; margin-bottom: 5px; }
         .cat-toggle { padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; cursor: pointer; border: 1px solid #ddd; background: #fff; color: #888; user-select: none; }
@@ -210,6 +232,26 @@
             </form>
         </div>
         
+        <div id="tab-calendar" class="tab-view">
+            <div class="calendar-controls">
+                <button class="cal-btn" onclick="changeMonth(-1)">❮</button>
+                <h3 id="cal-month-year">Month Year</h3>
+                <button class="cal-btn" onclick="changeMonth(1)">❯</button>
+            </div>
+            
+            <div class="calendar-summary">
+                <div class="cal-sum-item"><span>Income</span><strong id="cal-inc" style="color: var(--income-color)">$0</strong></div>
+                <div class="cal-sum-item"><span>Expense</span><strong id="cal-exp" style="color: var(--expense-color)">$0</strong></div>
+                <div class="cal-sum-item"><span>Total</span><strong id="cal-total">$0</strong></div>
+            </div>
+
+            <div class="week-header">
+                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+            </div>
+            <div id="calendar-grid" class="calendar-grid">
+                </div>
+        </div>
+
         <div id="tab-stats" class="tab-view">
             <div class="stats-header">
                 <h3>Statistics</h3>
@@ -223,7 +265,7 @@
             
             <div class="chart-container">
                 <h4 style="color: var(--income-color)">Income Breakdown</h4>
-                <div id="income-msg" class="no-data-msg" style="display:none">No Income data for this period.</div>
+                <div id="income-msg" class="no-data-msg" style="display:none">No Income data.</div>
                 <canvas id="incomeChart"></canvas>
                 <div id="income-toggle-container" class="toggle-container" style="display:none;">
                     <div class="toggle-label">Tap to Hide/Show:</div>
@@ -233,7 +275,7 @@
 
             <div class="chart-container">
                 <h4 style="color: var(--expense-color)">Expense Breakdown</h4>
-                <div id="expense-msg" class="no-data-msg" style="display:none">No Expense data for this period.</div>
+                <div id="expense-msg" class="no-data-msg" style="display:none">No Expense data.</div>
                 <canvas id="expenseChart"></canvas>
             </div>
         </div>
@@ -288,10 +330,11 @@
     </div>
 
     <nav class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('dashboard', this)"><span>🏠</span> Dashboard</div>
+        <div class="nav-item active" onclick="switchTab('dashboard', this)"><span>🏠</span> Dash</div>
+        <div class="nav-item" onclick="switchTab('calendar', this)"><span>📅</span> Cal</div>
         <div class="nav-item" onclick="switchTab('stats', this)"><span>📊</span> Stats</div>
-        <div class="nav-item" onclick="switchTab('history', this)"><span>📜</span> History</div>
-        <div class="nav-item" onclick="switchTab('settings', this)"><span>⚙️</span> Settings</div>
+        <div class="nav-item" onclick="switchTab('history', this)"><span>📜</span> List</div>
+        <div class="nav-item" onclick="switchTab('settings', this)"><span>⚙️</span> Set</div>
     </nav>
 </div>
 
@@ -312,7 +355,7 @@
     const formHeader = document.getElementById('form-header');
     
     let currentTags = []; 
-    let editingTransactionId = null; // Stores ID if editing
+    let editingTransactionId = null;
 
     const filterMonth = document.getElementById('filter-month');
     const filterCategory = document.getElementById('filter-category');
@@ -328,6 +371,14 @@
     const histNet = document.getElementById('hist-net');
     const histDaily = document.getElementById('hist-daily');
     const backupText = document.getElementById('backup-text');
+
+    // Calendar Vars
+    let calendarDate = new Date();
+    const calMonthYear = document.getElementById('cal-month-year');
+    const calendarGrid = document.getElementById('calendar-grid');
+    const calInc = document.getElementById('cal-inc');
+    const calExp = document.getElementById('cal-exp');
+    const calTotal = document.getElementById('cal-total');
 
     dateInput.valueAsDate = new Date();
 
@@ -363,76 +414,102 @@
         renderHistory(); 
     }
 
+    // --- CALENDAR LOGIC ---
+    function renderCalendar() {
+        const year = calendarDate.getFullYear();
+        const month = calendarDate.getMonth();
+        
+        calMonthYear.innerText = calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        
+        calendarGrid.innerHTML = "";
+        
+        // Month stats
+        let monthInc = 0;
+        let monthExp = 0;
+        const monthStr = `${year}-${String(month+1).padStart(2, '0')}`; // "2023-10"
+
+        // Group transactions by day
+        const dayData = {};
+        transactions.forEach(t => {
+            if(t.walletId === currentWalletId && t.date.startsWith(monthStr)) {
+                if(t.amount > 0) monthInc += t.amount;
+                else monthExp += t.amount;
+
+                const day = parseInt(t.date.split('-')[2]);
+                if(!dayData[day]) dayData[day] = { inc: 0, exp: 0 };
+                if(t.amount > 0) dayData[day].inc += t.amount;
+                else dayData[day].exp += t.amount;
+            }
+        });
+
+        // Update Header
+        calInc.innerText = `+$${monthInc.toFixed(2)}`;
+        calExp.innerText = `-$${Math.abs(monthExp).toFixed(2)}`;
+        const net = monthInc + monthExp;
+        calTotal.innerText = `$${net.toFixed(2)}`;
+        calTotal.style.color = net >= 0 ? 'var(--income-color)' : 'var(--expense-color)';
+
+        // Render Empty cells
+        for(let i=0; i<firstDayIndex; i++) {
+            const div = document.createElement('div');
+            div.classList.add('day-cell', 'empty');
+            calendarGrid.appendChild(div);
+        }
+
+        // Render Days
+        const today = new Date();
+        for(let i=1; i<=lastDay; i++) {
+            const div = document.createElement('div');
+            div.classList.add('day-cell');
+            if(i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                div.classList.add('today');
+            }
+            
+            let html = `<div class="day-num">${i}</div>`;
+            if(dayData[i]) {
+                if(dayData[i].inc > 0) html += `<div class="day-val inc">+$${dayData[i].inc.toFixed(0)}</div>`;
+                if(dayData[i].exp < 0) html += `<div class="day-val exp">-$${Math.abs(dayData[i].exp).toFixed(0)}</div>`;
+            }
+            div.innerHTML = html;
+            calendarGrid.appendChild(div);
+        }
+    }
+
+    function changeMonth(dir) {
+        calendarDate.setMonth(calendarDate.getMonth() + dir);
+        renderCalendar();
+    }
+
     // --- EDIT MODE LOGIC ---
     function editTransaction(id) {
-        const t = transactions.find(x => x.id === id);
-        if(!t) return;
-
-        // Populate Form
-        textInput.value = t.text;
-        amountInput.value = t.amount;
-        dateInput.value = t.date;
-        currentTags = [...t.categories];
-        renderInputTags();
-
-        // UI Changes
-        editingTransactionId = id;
-        formHeader.innerText = "Edit Transaction";
-        submitBtn.innerText = "Update Transaction";
-        submitBtn.style.background = "#f39c12"; // Orange
-        cancelBtn.style.display = "block";
-
-        // Go to dashboard
-        switchTab('dashboard');
-        document.querySelector('.content').scrollTop = 0; // Scroll top
+        const t = transactions.find(x => x.id === id); if(!t) return;
+        textInput.value = t.text; amountInput.value = t.amount; dateInput.value = t.date;
+        currentTags = [...t.categories]; renderInputTags();
+        editingTransactionId = id; formHeader.innerText = "Edit Transaction";
+        submitBtn.innerText = "Update Transaction"; submitBtn.style.background = "#f39c12"; cancelBtn.style.display = "block";
+        switchTab('dashboard'); document.querySelector('.content').scrollTop = 0; 
     }
-
     function cancelEditMode() {
-        editingTransactionId = null;
-        textInput.value = '';
-        amountInput.value = '';
-        dateInput.valueAsDate = new Date();
-        currentTags = [];
-        renderInputTags();
-
-        // Reset UI
-        formHeader.innerText = "Add Transaction";
-        submitBtn.innerText = "Add Transaction";
-        submitBtn.style.background = ""; // Reset to CSS default
-        cancelBtn.style.display = "none";
+        editingTransactionId = null; textInput.value = ''; amountInput.value = ''; dateInput.valueAsDate = new Date();
+        currentTags = []; renderInputTags();
+        formHeader.innerText = "Add Transaction"; submitBtn.innerText = "Add Transaction"; submitBtn.style.background = ""; cancelBtn.style.display = "none";
     }
-
     function addTransaction(e) {
         e.preventDefault();
         if (textInput.value.trim() === '' || amountInput.value.trim() === '') { alert('Missing description or amount'); return; }
-        
-        let finalCategories = currentTags; 
-        if(finalCategories.length === 0) finalCategories = categoryDropdown.value !== "NEW_CAT" ? [categoryDropdown.value] : ["General"];
-
+        let finalCategories = currentTags; if(finalCategories.length === 0) finalCategories = categoryDropdown.value !== "NEW_CAT" ? [categoryDropdown.value] : ["General"];
         if(editingTransactionId) {
-            // UPDATE EXISTING
             const index = transactions.findIndex(t => t.id === editingTransactionId);
-            if(index !== -1) {
-                transactions[index] = { 
-                    ...transactions[index], 
-                    text: textInput.value, 
-                    amount: +amountInput.value, 
-                    date: dateInput.value, 
-                    categories: finalCategories 
-                };
-                alert("Transaction Updated!");
-            }
-            cancelEditMode(); // Resets form and UI
+            if(index !== -1) { transactions[index] = { ...transactions[index], text: textInput.value, amount: +amountInput.value, date: dateInput.value, categories: finalCategories }; alert("Updated!"); }
+            cancelEditMode();
         } else {
-            // ADD NEW
             const transaction = { id: Date.now(), walletId: currentWalletId, text: textInput.value, amount: +amountInput.value, date: dateInput.value, categories: finalCategories };
-            transactions.push(transaction); 
-            textInput.value = ''; amountInput.value = ''; dateInput.valueAsDate = new Date(); currentTags = []; renderInputTags(); 
-            alert("Transaction Added!");
+            transactions.push(transaction); textInput.value = ''; amountInput.value = ''; dateInput.valueAsDate = new Date(); currentTags = []; renderInputTags(); alert("Added!");
         }
-
-        localStorage.setItem('transactions', JSON.stringify(transactions));
-        updateValues(); renderHistory(); 
+        localStorage.setItem('transactions', JSON.stringify(transactions)); updateValues(); renderHistory(); 
     }
 
     // --- CHART LOGIC ---
@@ -440,71 +517,34 @@
         if(!window.Chart) return;
         const selectedMonth = filterMonth.value;
         statsPeriodDisplay.innerText = selectedMonth === 'all' ? "Showing: All Time" : `Showing: ${selectedMonth}`;
-        const currentData = transactions.filter(t => {
-            return (t.walletId === currentWalletId) && (selectedMonth === 'all' || (t.date && t.date.startsWith(selectedMonth)));
-        });
+        const currentData = transactions.filter(t => (t.walletId === currentWalletId) && (selectedMonth === 'all' || (t.date && t.date.startsWith(selectedMonth))));
         const sortType = chartSortSelect.value;
         const colorPalette = ['#3b82f6', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#34495e', '#7f8c8d'];
-
         function getChartData(type) {
-            const totals = {};
-            const isIncome = type === 'income';
+            const totals = {}; const isIncome = type === 'income';
             currentData.forEach(t => {
                 const isTarget = isIncome ? t.amount > 0 : t.amount < 0;
-                if(isTarget) {
-                    t.categories.forEach(cat => {
-                        if (isIncome && excludedIncomeCategories.has(cat)) return;
-                        totals[cat] = (totals[cat] || 0) + Math.abs(t.amount);
-                    });
-                }
+                if(isTarget) t.categories.forEach(cat => { if (isIncome && excludedIncomeCategories.has(cat)) return; totals[cat] = (totals[cat] || 0) + Math.abs(t.amount); });
             });
-            const entries = Object.entries(totals);
-            if(entries.length === 0) return null;
-            entries.sort((a, b) => {
-                if(sortType === 'high-low') return b[1] - a[1];
-                if(sortType === 'low-high') return a[1] - b[1];
-                if(sortType === 'az') return a[0].localeCompare(b[0]);
-                return 0;
-            });
+            const entries = Object.entries(totals); if(entries.length === 0) return null;
+            entries.sort((a, b) => { if(sortType === 'high-low') return b[1] - a[1]; if(sortType === 'low-high') return a[1] - b[1]; if(sortType === 'az') return a[0].localeCompare(b[0]); return 0; });
             return { labels: entries.map(e => e[0]), data: entries.map(e => e[1]) };
         }
-
-        const incData = getChartData('income');
-        const incCanvas = document.getElementById('incomeChart');
-        const incMsg = document.getElementById('income-msg');
+        const incData = getChartData('income'); const incCanvas = document.getElementById('incomeChart'); const incMsg = document.getElementById('income-msg');
         if(incomeChartInstance) incomeChartInstance.destroy();
-
-        if(!incData && excludedIncomeCategories.size === 0) { 
-            incCanvas.style.display = 'none'; incMsg.style.display = 'block'; document.getElementById('income-toggle-container').style.display = 'none';
-        } else {
-            incCanvas.style.display = incData ? 'block' : 'none'; incMsg.style.display = incData ? 'none' : 'block';
-            if(!incData) incMsg.innerText = "All categories hidden.";
-            if(incData) {
-                incomeChartInstance = new Chart(incCanvas, { type: 'doughnut', data: { labels: incData.labels, datasets: [{ data: incData.data, backgroundColor: colorPalette, borderWidth: 1 }] }, options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } } });
-            }
-            renderIncomeToggles(currentData);
-        }
-
-        const expData = getChartData('expense');
-        const expCanvas = document.getElementById('expenseChart');
-        const expMsg = document.getElementById('expense-msg');
+        if(!incData && excludedIncomeCategories.size === 0) { incCanvas.style.display = 'none'; incMsg.style.display = 'block'; document.getElementById('income-toggle-container').style.display = 'none'; } 
+        else { incCanvas.style.display = incData ? 'block' : 'none'; incMsg.style.display = incData ? 'none' : 'block'; if(!incData) incMsg.innerText = "All categories hidden."; if(incData) { incomeChartInstance = new Chart(incCanvas, { type: 'doughnut', data: { labels: incData.labels, datasets: [{ data: incData.data, backgroundColor: colorPalette, borderWidth: 1 }] }, options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } } }); } renderIncomeToggles(currentData); }
+        const expData = getChartData('expense'); const expCanvas = document.getElementById('expenseChart'); const expMsg = document.getElementById('expense-msg');
         if(expenseChartInstance) expenseChartInstance.destroy();
-        if(!expData) { expCanvas.style.display = 'none'; expMsg.style.display = 'block'; } 
-        else {
-            expCanvas.style.display = 'block'; expMsg.style.display = 'none';
-            expenseChartInstance = new Chart(expCanvas, { type: 'doughnut', data: { labels: expData.labels, datasets: [{ data: expData.data, backgroundColor: colorPalette, borderWidth: 1 }] }, options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } } });
-        }
+        if(!expData) { expCanvas.style.display = 'none'; expMsg.style.display = 'block'; } else { expCanvas.style.display = 'block'; expMsg.style.display = 'none'; expenseChartInstance = new Chart(expCanvas, { type: 'doughnut', data: { labels: expData.labels, datasets: [{ data: expData.data, backgroundColor: colorPalette, borderWidth: 1 }] }, options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } } }); }
     }
-
     function renderIncomeToggles(data) {
-        const incomeCats = new Set();
-        data.forEach(t => { if(t.amount > 0) t.categories.forEach(c => incomeCats.add(c)); });
+        const incomeCats = new Set(); data.forEach(t => { if(t.amount > 0) t.categories.forEach(c => incomeCats.add(c)); });
         const container = document.getElementById('income-toggles'); container.innerHTML = '';
         if(incomeCats.size === 0) { document.getElementById('income-toggle-container').style.display = 'none'; return; }
         document.getElementById('income-toggle-container').style.display = 'flex';
         Array.from(incomeCats).sort().forEach(cat => {
-            const btn = document.createElement('div');
-            const isActive = !excludedIncomeCategories.has(cat);
+            const btn = document.createElement('div'); const isActive = !excludedIncomeCategories.has(cat);
             btn.className = `cat-toggle ${isActive ? 'active' : ''}`; btn.innerText = cat;
             btn.onclick = () => { if(isActive) excludedIncomeCategories.add(cat); else excludedIncomeCategories.delete(cat); renderStats(); };
             container.appendChild(btn);
@@ -515,136 +555,57 @@
     function generatePDF(type) {
         if (!window.jspdf) { alert("PDF Library not loaded. Check internet."); return; }
         const { jsPDF } = window.jspdf; const doc = new jsPDF();
-        const wName = wallets.find(w => w.id === currentWalletId).name;
-        const selectedMonthVal = filterMonth.value;
+        const wName = wallets.find(w => w.id === currentWalletId).name; const selectedMonthVal = filterMonth.value;
         let pdfTitle = "", pdfData = [];
-        if (type === 'monthly') {
-            if (selectedMonthVal === 'all') { alert("Please select a month first."); return; }
-            pdfTitle = `Monthly Report: ${selectedMonthVal}`;
-            pdfData = transactions.filter(t => t.walletId === currentWalletId && t.date.startsWith(selectedMonthVal));
-        } else if (type === 'yearly') {
-            let year = selectedMonthVal === 'all' ? new Date().getFullYear().toString() : selectedMonthVal.substring(0, 4);
-            pdfTitle = `Yearly Report: ${year}`;
-            pdfData = transactions.filter(t => t.walletId === currentWalletId && t.date.startsWith(year));
-        }
-        if(pdfData.length === 0) { alert("No data found."); return; }
-        pdfData.sort((a, b) => new Date(a.date) - new Date(b.date));
-        
-        const totalInc = pdfData.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0);
-        const totalExp = pdfData.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0);
-        const totalNet = totalInc + totalExp;
-
+        if (type === 'monthly') { if (selectedMonthVal === 'all') { alert("Select a month first."); return; } pdfTitle = `Monthly Report: ${selectedMonthVal}`; pdfData = transactions.filter(t => t.walletId === currentWalletId && t.date.startsWith(selectedMonthVal)); }
+        else if (type === 'yearly') { let year = selectedMonthVal === 'all' ? new Date().getFullYear().toString() : selectedMonthVal.substring(0, 4); pdfTitle = `Yearly Report: ${year}`; pdfData = transactions.filter(t => t.walletId === currentWalletId && t.date.startsWith(year)); }
+        if(pdfData.length === 0) { alert("No data."); return; } pdfData.sort((a, b) => new Date(a.date) - new Date(b.date));
+        const totalInc = pdfData.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0); const totalExp = pdfData.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0); const totalNet = totalInc + totalExp;
         doc.setFontSize(18); doc.text(wName, 14, 20); doc.setFontSize(14); doc.text(pdfTitle, 14, 28); doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 34);
         doc.setDrawColor(200); doc.setFillColor(245, 245, 245); doc.rect(14, 40, 180, 20, 'FD'); 
         doc.setTextColor(46, 204, 113); doc.text(`Income: +$${totalInc.toFixed(2)}`, 20, 52); doc.setTextColor(231, 76, 60); doc.text(`Expense: -$${Math.abs(totalExp).toFixed(2)}`, 80, 52); doc.setTextColor(0); doc.text(`Net: $${totalNet.toFixed(2)}`, 140, 52);
-
         const tableBody = pdfData.map(t => [ t.date, t.text, t.categories.join(', '), (t.amount > 0 ? '+' : '') + t.amount.toFixed(2) ]);
         doc.autoTable({ startY: 65, head: [['Date', 'Description', 'Category', 'Amount']], body: tableBody, theme: 'grid', headStyles: { fillColor: [59, 130, 246] }, columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } }, didParseCell: function(data) { if (data.section === 'body' && data.column.index === 3) { const val = parseFloat(data.cell.raw.replace('+', '')); data.cell.styles.textColor = val < 0 ? [231, 76, 60] : [46, 204, 113]; } } });
         doc.save(`${wName.replace(/\s+/g, '_')}_${type}_report.pdf`);
     }
 
-    function renameWallet() {
-        const wallet = wallets.find(w => w.id === currentWalletId); if(!wallet) return;
-        const newName = prompt("Enter new name for this wallet:", wallet.name);
-        if(newName && newName.trim() !== "") { wallet.name = newName.trim(); localStorage.setItem('wallets', JSON.stringify(wallets)); renderWalletSelector(); }
-    }
-    function deleteWallet() {
-        if(wallets.length <= 1) { alert("Cannot delete the only wallet."); return; }
-        if(confirm(`Delete wallet?`)) {
-            transactions = transactions.filter(t => t.walletId !== currentWalletId); localStorage.setItem('transactions', JSON.stringify(transactions));
-            wallets = wallets.filter(w => w.id !== currentWalletId); localStorage.setItem('wallets', JSON.stringify(wallets));
-            currentWalletId = wallets[0].id; localStorage.setItem('currentWalletId', currentWalletId); init();
-        }
-    }
-    function renderManageCategories() {
-        manageCategoriesList.innerHTML = '';
-        categories.forEach(cat => {
-            const el = document.createElement('div'); el.className = 'manage-tag'; el.innerHTML = `${cat} <span class="del" onclick="deleteCategory('${cat}')">×</span>`; manageCategoriesList.appendChild(el);
-        });
-    }
-    function deleteCategory(catName) {
-        if(categories.length <= 1) { alert("Must keep one category."); return; }
-        if(confirm(`Delete category "${catName}"?`)) {
-            categories = categories.filter(c => c !== catName); localStorage.setItem('categories', JSON.stringify(categories));
-            updateCategoryDropdowns(); renderManageCategories();
-            if(currentTags.includes(catName)) removeTagFromInput(catName);
-        }
-    }
+    function renameWallet() { const wallet = wallets.find(w => w.id === currentWalletId); if(!wallet) return; const newName = prompt("Name:", wallet.name); if(newName && newName.trim() !== "") { wallet.name = newName.trim(); localStorage.setItem('wallets', JSON.stringify(wallets)); renderWalletSelector(); } }
+    function deleteWallet() { if(wallets.length <= 1) { alert("Cannot delete only wallet."); return; } if(confirm(`Delete wallet?`)) { transactions = transactions.filter(t => t.walletId !== currentWalletId); localStorage.setItem('transactions', JSON.stringify(transactions)); wallets = wallets.filter(w => w.id !== currentWalletId); localStorage.setItem('wallets', JSON.stringify(wallets)); currentWalletId = wallets[0].id; localStorage.setItem('currentWalletId', currentWalletId); init(); } }
+    function renderManageCategories() { manageCategoriesList.innerHTML = ''; categories.forEach(cat => { const el = document.createElement('div'); el.className = 'manage-tag'; el.innerHTML = `${cat} <span class="del" onclick="deleteCategory('${cat}')">×</span>`; manageCategoriesList.appendChild(el); }); }
+    function deleteCategory(catName) { if(categories.length <= 1) { alert("Keep one category."); return; } if(confirm(`Delete "${catName}"?`)) { categories = categories.filter(c => c !== catName); localStorage.setItem('categories', JSON.stringify(categories)); updateCategoryDropdowns(); renderManageCategories(); if(currentTags.includes(catName)) removeTagFromInput(catName); } }
     function generateBackup() { const data = { w: wallets, t: transactions, c: categories, cw: currentWalletId }; backupText.value = btoa(JSON.stringify(data)); alert("Backup generated!"); }
-    function emailBackup() { const code = backupText.value.trim(); if(!code) { alert("Generate Backup first!"); return; } window.location.href = `mailto:?subject=Wallet Backup&body=${encodeURIComponent(code)}`; }
-    function restoreBackup() {
-        const code = backupText.value.trim(); if(!code) return;
-        try { const data = JSON.parse(atob(code)); if(confirm("REPLACE all data with backup?")) { localStorage.setItem('wallets', JSON.stringify(data.w)); localStorage.setItem('transactions', JSON.stringify(data.t)); localStorage.setItem('categories', JSON.stringify(data.c)); localStorage.setItem('currentWalletId', data.cw); location.reload(); } } catch(e) { alert("Invalid Backup Code."); }
-    }
+    function emailBackup() { const code = backupText.value.trim(); if(!code) { alert("Generate first!"); return; } window.location.href = `mailto:?subject=Wallet Backup&body=${encodeURIComponent(code)}`; }
+    function restoreBackup() { const code = backupText.value.trim(); if(!code) return; try { const data = JSON.parse(atob(code)); if(confirm("REPLACE all data?")) { localStorage.setItem('wallets', JSON.stringify(data.w)); localStorage.setItem('transactions', JSON.stringify(data.t)); localStorage.setItem('categories', JSON.stringify(data.c)); localStorage.setItem('currentWalletId', data.cw); location.reload(); } } catch(e) { alert("Invalid Code."); } }
     function renderWalletSelector() { walletSelect.innerHTML = ''; wallets.forEach(w => { const opt = document.createElement('option'); opt.value = w.id; opt.innerText = w.name; walletSelect.appendChild(opt); }); walletSelect.value = currentWalletId; const wName = wallets.find(w => w.id === currentWalletId).name; walletNameDisplay.innerText = wName + " Balance"; settingsWalletName.innerText = wName; }
     function addNewWallet() { const name = prompt("Name:"); if(name) { const newId = 'w_' + Date.now(); wallets.push({ id: newId, name: name }); localStorage.setItem('wallets', JSON.stringify(wallets)); currentWalletId = newId; localStorage.setItem('currentWalletId', currentWalletId); renderWalletSelector(); updateValues(); renderHistory(); } }
     function changeWallet() { currentWalletId = walletSelect.value; localStorage.setItem('currentWalletId', currentWalletId); const wName = wallets.find(w => w.id === currentWalletId).name; walletNameDisplay.innerText = wName + " Balance"; settingsWalletName.innerText = wName; updateValues(); renderHistory(); }
-    function updateCategoryDropdowns() {
-        categoryDropdown.innerHTML = ''; categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; categoryDropdown.appendChild(option); });
-        const addOpt = document.createElement('option'); addOpt.value = "NEW_CAT"; addOpt.innerText = "+ Create New Category"; categoryDropdown.appendChild(addOpt);
-        const currentFilter = filterCategory.value; filterCategory.innerHTML = '<option value="all">All Categories</option>'; categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; filterCategory.appendChild(option); }); filterCategory.value = currentFilter; renderManageCategories();
-    }
-    categoryDropdown.addEventListener('change', function() {
-        if(this.value === 'NEW_CAT') {
-            const newCat = prompt("Category Name:");
-            if (newCat && newCat.trim() !== "") { const formatted = newCat.trim(); if(!categories.includes(formatted)) { categories.push(formatted); categories.sort(); localStorage.setItem('categories', JSON.stringify(categories)); updateCategoryDropdowns(); categoryDropdown.value = formatted; } } else { categoryDropdown.value = categories[0]; }
-        }
-    });
+    function updateCategoryDropdowns() { categoryDropdown.innerHTML = ''; categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; categoryDropdown.appendChild(option); }); const addOpt = document.createElement('option'); addOpt.value = "NEW_CAT"; addOpt.innerText = "+ Create New"; categoryDropdown.appendChild(addOpt); const currentFilter = filterCategory.value; filterCategory.innerHTML = '<option value="all">All Categories</option>'; categories.forEach(cat => { const option = document.createElement('option'); option.value = cat; option.innerText = cat; filterCategory.appendChild(option); }); filterCategory.value = currentFilter; renderManageCategories(); }
+    categoryDropdown.addEventListener('change', function() { if(this.value === 'NEW_CAT') { const newCat = prompt("Category Name:"); if (newCat && newCat.trim() !== "") { const formatted = newCat.trim(); if(!categories.includes(formatted)) { categories.push(formatted); categories.sort(); localStorage.setItem('categories', JSON.stringify(categories)); updateCategoryDropdowns(); categoryDropdown.value = formatted; } } else { categoryDropdown.value = categories[0]; } } });
     function addTagToInput() { const cat = categoryDropdown.value; if(!currentTags.includes(cat) && cat !== "NEW_CAT") { currentTags.push(cat); renderInputTags(); } }
     function removeTagFromInput(cat) { currentTags = currentTags.filter(t => t !== cat); renderInputTags(); }
     function renderInputTags() { selectedTagsContainer.innerHTML = ''; currentTags.forEach(cat => { const pill = document.createElement('div'); pill.className = 'tag-pill'; pill.innerHTML = `${cat} <span onclick="removeTagFromInput('${cat}')">×</span>`; selectedTagsContainer.appendChild(pill); }); }
-    function updateValues() {
-        const walletTrans = transactions.filter(t => t.walletId === currentWalletId);
-        const amounts = walletTrans.map(t => t.amount);
-        const total = amounts.reduce((acc, item) => (acc += item), 0).toFixed(2);
-        const income = amounts.filter(item => item > 0).reduce((acc, item) => (acc += item), 0).toFixed(2);
-        const expense = (amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0) * -1).toFixed(2);
-        balanceEl.innerText = `$${total}`; moneyPlusEl.innerText = `+$${income}`; moneyMinusEl.innerText = `-$${expense}`;
-    }
+    function updateValues() { const walletTrans = transactions.filter(t => t.walletId === currentWalletId); const amounts = walletTrans.map(t => t.amount); const total = amounts.reduce((acc, item) => (acc += item), 0).toFixed(2); const income = amounts.filter(item => item > 0).reduce((acc, item) => (acc += item), 0).toFixed(2); const expense = (amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0) * -1).toFixed(2); balanceEl.innerText = `$${total}`; moneyPlusEl.innerText = `+$${income}`; moneyMinusEl.innerText = `-$${expense}`; }
     function renderHistory() {
-        listEl.innerHTML = '';
-        const selectedMonth = filterMonth.value; const selectedCat = filterCategory.value;
-        let filtered = transactions.filter(t => t.walletId === currentWalletId);
-        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-        filtered = filtered.filter(t => {
-            const tMonth = t.date ? t.date.substring(0, 7) : 'no-date';
-            return ((selectedMonth === 'all') || (tMonth === selectedMonth)) && ((selectedCat === 'all') || (t.categories && t.categories.includes(selectedCat)));
-        });
-        const fAmounts = filtered.map(t => t.amount);
-        const fTotal = fAmounts.reduce((acc, i) => acc + i, 0);
-        const fInc = fAmounts.filter(i => i > 0).reduce((acc, i) => acc + i, 0);
-        const fExp = (fAmounts.filter(i => i < 0).reduce((acc, i) => acc + i, 0) * -1);
-        histInc.innerText = `+$${fInc.toFixed(2)}`; histExp.innerText = `-$${fExp.toFixed(2)}`;
-        histNet.innerText = (fTotal >= 0 ? '+' : '') + `$${fTotal.toFixed(2)}`; histNet.style.color = fTotal >= 0 ? 'var(--income-color)' : 'var(--expense-color)';
-        if(selectedMonth !== 'all') {
-            const [y, m] = selectedMonth.split('-'); const daysInMonth = new Date(y, m, 0).getDate();
-            const dailyVal = fTotal / daysInMonth; histDaily.innerText = (dailyVal >= 0 ? '+' : '') + `$${dailyVal.toFixed(2)}`;
-        } else { histDaily.innerText = "-"; }
+        listEl.innerHTML = ''; const selectedMonth = filterMonth.value; const selectedCat = filterCategory.value;
+        let filtered = transactions.filter(t => t.walletId === currentWalletId); filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+        filtered = filtered.filter(t => { const tMonth = t.date ? t.date.substring(0, 7) : 'no-date'; return ((selectedMonth === 'all') || (tMonth === selectedMonth)) && ((selectedCat === 'all') || (t.categories && t.categories.includes(selectedCat))); });
+        const fAmounts = filtered.map(t => t.amount); const fTotal = fAmounts.reduce((acc, i) => acc + i, 0); const fInc = fAmounts.filter(i => i > 0).reduce((acc, i) => acc + i, 0); const fExp = (fAmounts.filter(i => i < 0).reduce((acc, i) => acc + i, 0) * -1);
+        histInc.innerText = `+$${fInc.toFixed(2)}`; histExp.innerText = `-$${fExp.toFixed(2)}`; histNet.innerText = (fTotal >= 0 ? '+' : '') + `$${fTotal.toFixed(2)}`; histNet.style.color = fTotal >= 0 ? 'var(--income-color)' : 'var(--expense-color)';
+        if(selectedMonth !== 'all') { const [y, m] = selectedMonth.split('-'); const daysInMonth = new Date(y, m, 0).getDate(); const dailyVal = fTotal / daysInMonth; histDaily.innerText = (dailyVal >= 0 ? '+' : '') + `$${dailyVal.toFixed(2)}`; } else { histDaily.innerText = "-"; }
         if(filtered.length === 0) { listEl.innerHTML = '<li style="text-align:center; background:none; box-shadow:none; color:#888;">No transactions found.</li>'; return; }
-        filtered.forEach(t => {
-            const sign = t.amount < 0 ? '-' : '+'; const item = document.createElement('li'); item.classList.add(t.amount < 0 ? 'minus' : 'plus');
-            const tagsHtml = t.categories.map(c => `<span class="item-tag">${c}</span>`).join('');
-            item.innerHTML = `<div class="item-info"><span class="item-date">${t.date || 'No Date'}</span><strong>${t.text}</strong><div class="item-tags">${tagsHtml}</div></div><span>${sign}$${Math.abs(t.amount).toFixed(2)}</span>
-            <div class="action-btns"><button class="action-btn edit-btn" onclick="editTransaction(${t.id})">✏️</button><button class="action-btn delete-btn" onclick="removeTransaction(${t.id})">×</button></div>`;
-            listEl.appendChild(item);
-        });
+        filtered.forEach(t => { const sign = t.amount < 0 ? '-' : '+'; const item = document.createElement('li'); item.classList.add(t.amount < 0 ? 'minus' : 'plus'); const tagsHtml = t.categories.map(c => `<span class="item-tag">${c}</span>`).join(''); item.innerHTML = `<div class="item-info"><span class="item-date">${t.date || 'No Date'}</span><strong>${t.text}</strong><div class="item-tags">${tagsHtml}</div></div><span>${sign}$${Math.abs(t.amount).toFixed(2)}</span><div class="action-btns"><button class="action-btn edit-btn" onclick="editTransaction(${t.id})">✏️</button><button class="action-btn delete-btn" onclick="removeTransaction(${t.id})">×</button></div>`; listEl.appendChild(item); });
         if(document.getElementById('tab-stats').classList.contains('active')) renderStats();
     }
-    function updateMonthFilterOptions() {
-        const currentSelection = filterMonth.value; const uniqueMonths = new Set();
-        transactions.forEach(t => { if(t.date && t.date.length >= 7) uniqueMonths.add(t.date.substring(0, 7)); });
-        const sortedMonths = Array.from(uniqueMonths).sort().reverse();
-        filterMonth.innerHTML = '<option value="all">All Months</option>';
-        sortedMonths.forEach(m => { const option = document.createElement('option'); option.value = m; option.innerText = m; filterMonth.appendChild(option); });
-        filterMonth.value = currentSelection;
-    }
-    function removeTransaction(id) { if(confirm("Delete this transaction?")) { transactions = transactions.filter(t => t.id !== id); localStorage.setItem('transactions', JSON.stringify(transactions)); updateValues(); renderHistory(); } }
+    function updateMonthFilterOptions() { const currentSelection = filterMonth.value; const uniqueMonths = new Set(); transactions.forEach(t => { if(t.date && t.date.length >= 7) uniqueMonths.add(t.date.substring(0, 7)); }); const sortedMonths = Array.from(uniqueMonths).sort().reverse(); filterMonth.innerHTML = '<option value="all">All Months</option>'; sortedMonths.forEach(m => { const option = document.createElement('option'); option.value = m; option.innerText = m; filterMonth.appendChild(option); }); filterMonth.value = currentSelection; }
+    function removeTransaction(id) { if(confirm("Delete transaction?")) { transactions = transactions.filter(t => t.id !== id); localStorage.setItem('transactions', JSON.stringify(transactions)); updateValues(); renderHistory(); } }
+    
+    // TAB SWITCHER
     window.switchTab = function(tabName, navEl) {
         document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
         document.getElementById('tab-' + tabName).classList.add('active');
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         if(navEl) navEl.classList.add('active');
-        if(tabName === 'history') renderHistory(); if(tabName === 'stats') renderStats();
+        if(tabName === 'history') renderHistory(); if(tabName === 'stats') renderStats(); if(tabName === 'calendar') renderCalendar();
     }
     form.addEventListener('submit', addTransaction);
     init();
