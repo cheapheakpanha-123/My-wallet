@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Pro Wallet v8 (Calendar)</title>
+    <title>Pro Wallet v9 (Percent Charts)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 
     <style>
         /* --- CSS STYLES --- */
@@ -248,8 +249,7 @@
             <div class="week-header">
                 <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
             </div>
-            <div id="calendar-grid" class="calendar-grid">
-                </div>
+            <div id="calendar-grid" class="calendar-grid"></div>
         </div>
 
         <div id="tab-stats" class="tab-view">
@@ -418,70 +418,39 @@
     function renderCalendar() {
         const year = calendarDate.getFullYear();
         const month = calendarDate.getMonth();
-        
         calMonthYear.innerText = calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        
         const firstDayIndex = new Date(year, month, 1).getDay();
         const lastDay = new Date(year, month + 1, 0).getDate();
-        
         calendarGrid.innerHTML = "";
         
-        // Month stats
-        let monthInc = 0;
-        let monthExp = 0;
-        const monthStr = `${year}-${String(month+1).padStart(2, '0')}`; // "2023-10"
-
-        // Group transactions by day
+        let monthInc = 0; let monthExp = 0;
+        const monthStr = `${year}-${String(month+1).padStart(2, '0')}`;
         const dayData = {};
         transactions.forEach(t => {
             if(t.walletId === currentWalletId && t.date.startsWith(monthStr)) {
-                if(t.amount > 0) monthInc += t.amount;
-                else monthExp += t.amount;
-
+                if(t.amount > 0) monthInc += t.amount; else monthExp += t.amount;
                 const day = parseInt(t.date.split('-')[2]);
                 if(!dayData[day]) dayData[day] = { inc: 0, exp: 0 };
-                if(t.amount > 0) dayData[day].inc += t.amount;
-                else dayData[day].exp += t.amount;
+                if(t.amount > 0) dayData[day].inc += t.amount; else dayData[day].exp += t.amount;
             }
         });
+        calInc.innerText = `+$${monthInc.toFixed(2)}`; calExp.innerText = `-$${Math.abs(monthExp).toFixed(2)}`;
+        const net = monthInc + monthExp; calTotal.innerText = `$${net.toFixed(2)}`; calTotal.style.color = net >= 0 ? 'var(--income-color)' : 'var(--expense-color)';
 
-        // Update Header
-        calInc.innerText = `+$${monthInc.toFixed(2)}`;
-        calExp.innerText = `-$${Math.abs(monthExp).toFixed(2)}`;
-        const net = monthInc + monthExp;
-        calTotal.innerText = `$${net.toFixed(2)}`;
-        calTotal.style.color = net >= 0 ? 'var(--income-color)' : 'var(--expense-color)';
-
-        // Render Empty cells
-        for(let i=0; i<firstDayIndex; i++) {
-            const div = document.createElement('div');
-            div.classList.add('day-cell', 'empty');
-            calendarGrid.appendChild(div);
-        }
-
-        // Render Days
+        for(let i=0; i<firstDayIndex; i++) { const div = document.createElement('div'); div.classList.add('day-cell', 'empty'); calendarGrid.appendChild(div); }
         const today = new Date();
         for(let i=1; i<=lastDay; i++) {
-            const div = document.createElement('div');
-            div.classList.add('day-cell');
-            if(i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-                div.classList.add('today');
-            }
-            
+            const div = document.createElement('div'); div.classList.add('day-cell');
+            if(i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) div.classList.add('today');
             let html = `<div class="day-num">${i}</div>`;
             if(dayData[i]) {
                 if(dayData[i].inc > 0) html += `<div class="day-val inc">+$${dayData[i].inc.toFixed(0)}</div>`;
                 if(dayData[i].exp < 0) html += `<div class="day-val exp">-$${Math.abs(dayData[i].exp).toFixed(0)}</div>`;
             }
-            div.innerHTML = html;
-            calendarGrid.appendChild(div);
+            div.innerHTML = html; calendarGrid.appendChild(div);
         }
     }
-
-    function changeMonth(dir) {
-        calendarDate.setMonth(calendarDate.getMonth() + dir);
-        renderCalendar();
-    }
+    function changeMonth(dir) { calendarDate.setMonth(calendarDate.getMonth() + dir); renderCalendar(); }
 
     // --- EDIT MODE LOGIC ---
     function editTransaction(id) {
@@ -512,14 +481,21 @@
         localStorage.setItem('transactions', JSON.stringify(transactions)); updateValues(); renderHistory(); 
     }
 
-    // --- CHART LOGIC ---
+    // --- CHART LOGIC (UPDATED WITH PERCENTAGES) ---
     function renderStats() {
         if(!window.Chart) return;
+        
+        // Register the DataLabels plugin
+        if (typeof ChartDataLabels !== 'undefined') {
+            Chart.register(ChartDataLabels);
+        }
+
         const selectedMonth = filterMonth.value;
         statsPeriodDisplay.innerText = selectedMonth === 'all' ? "Showing: All Time" : `Showing: ${selectedMonth}`;
         const currentData = transactions.filter(t => (t.walletId === currentWalletId) && (selectedMonth === 'all' || (t.date && t.date.startsWith(selectedMonth))));
         const sortType = chartSortSelect.value;
         const colorPalette = ['#3b82f6', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#34495e', '#7f8c8d'];
+        
         function getChartData(type) {
             const totals = {}; const isIncome = type === 'income';
             currentData.forEach(t => {
@@ -530,14 +506,54 @@
             entries.sort((a, b) => { if(sortType === 'high-low') return b[1] - a[1]; if(sortType === 'low-high') return a[1] - b[1]; if(sortType === 'az') return a[0].localeCompare(b[0]); return 0; });
             return { labels: entries.map(e => e[0]), data: entries.map(e => e[1]) };
         }
+
+        // Common Options for both charts
+        const commonOptions = { 
+            responsive: true, 
+            plugins: { 
+                legend: { position: 'right', labels: { boxWidth: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) label += ': ';
+                            let value = context.raw;
+                            let sum = context.chart._metasets[context.datasetIndex].total;
+                            let percentage = ((value / sum) * 100).toFixed(1) + "%";
+                            return label + "$" + value.toFixed(2) + " (" + percentage + ")";
+                        }
+                    }
+                },
+                datalabels: {
+                    color: '#fff',
+                    font: { weight: 'bold', size: 12 },
+                    formatter: (value, ctx) => {
+                        let sum = 0;
+                        let dataArr = ctx.chart.data.datasets[0].data;
+                        dataArr.map(data => { sum += data; });
+                        let percentage = (value * 100 / sum).toFixed(1);
+                        // Hide if less than 5% to prevent clutter
+                        if(percentage < 5) return "";
+                        return percentage + "%";
+                    }
+                }
+            } 
+        };
+
         const incData = getChartData('income'); const incCanvas = document.getElementById('incomeChart'); const incMsg = document.getElementById('income-msg');
         if(incomeChartInstance) incomeChartInstance.destroy();
         if(!incData && excludedIncomeCategories.size === 0) { incCanvas.style.display = 'none'; incMsg.style.display = 'block'; document.getElementById('income-toggle-container').style.display = 'none'; } 
-        else { incCanvas.style.display = incData ? 'block' : 'none'; incMsg.style.display = incData ? 'none' : 'block'; if(!incData) incMsg.innerText = "All categories hidden."; if(incData) { incomeChartInstance = new Chart(incCanvas, { type: 'doughnut', data: { labels: incData.labels, datasets: [{ data: incData.data, backgroundColor: colorPalette, borderWidth: 1 }] }, options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } } }); } renderIncomeToggles(currentData); }
+        else { 
+            incCanvas.style.display = incData ? 'block' : 'none'; incMsg.style.display = incData ? 'none' : 'block'; if(!incData) incMsg.innerText = "All categories hidden."; 
+            if(incData) { incomeChartInstance = new Chart(incCanvas, { type: 'doughnut', data: { labels: incData.labels, datasets: [{ data: incData.data, backgroundColor: colorPalette, borderWidth: 1 }] }, options: commonOptions }); } 
+            renderIncomeToggles(currentData); 
+        }
+
         const expData = getChartData('expense'); const expCanvas = document.getElementById('expenseChart'); const expMsg = document.getElementById('expense-msg');
         if(expenseChartInstance) expenseChartInstance.destroy();
-        if(!expData) { expCanvas.style.display = 'none'; expMsg.style.display = 'block'; } else { expCanvas.style.display = 'block'; expMsg.style.display = 'none'; expenseChartInstance = new Chart(expCanvas, { type: 'doughnut', data: { labels: expData.labels, datasets: [{ data: expData.data, backgroundColor: colorPalette, borderWidth: 1 }] }, options: { responsive: true, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } } }); }
+        if(!expData) { expCanvas.style.display = 'none'; expMsg.style.display = 'block'; } else { expCanvas.style.display = 'block'; expMsg.style.display = 'none'; expenseChartInstance = new Chart(expCanvas, { type: 'doughnut', data: { labels: expData.labels, datasets: [{ data: expData.data, backgroundColor: colorPalette, borderWidth: 1 }] }, options: commonOptions }); }
     }
+    
     function renderIncomeToggles(data) {
         const incomeCats = new Set(); data.forEach(t => { if(t.amount > 0) t.categories.forEach(c => incomeCats.add(c)); });
         const container = document.getElementById('income-toggles'); container.innerHTML = '';
