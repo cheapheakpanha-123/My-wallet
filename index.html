@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Pro Wallet v10 (Income Trend)</title>
+    <title>Pro Wallet v11 (Balance Trend)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
@@ -264,7 +264,7 @@
             <div id="stats-period-display" class="current-period-badge">All Time</div>
             
             <div class="chart-container">
-                <h4 style="color: var(--primary-color)">Monthly Income Trend</h4>
+                <h4 style="color: var(--primary-color)">Monthly Balance Trend</h4>
                 <canvas id="monthlyBarChart"></canvas>
             </div>
 
@@ -505,13 +505,13 @@
         const sortType = chartSortSelect.value;
         const colorPalette = ['#3b82f6', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#34495e', '#7f8c8d'];
         
-        // --- NEW LOGIC: MONTHLY BAR CHART (Shows trend regardless of filter) ---
+        // --- NEW LOGIC: MONTHLY BALANCE BAR CHART ---
         const monthlyCtx = document.getElementById('monthlyBarChart');
         
-        // 1. Calculate Monthly Totals from ALL transactions in this wallet
+        // 1. Calculate Monthly Net Balance (Income - Expense) from ALL transactions
         const monthlyTotals = {};
         transactions.forEach(t => {
-            if(t.walletId === currentWalletId && t.amount > 0) { // Income only
+            if(t.walletId === currentWalletId) { 
                 const mKey = t.date.substring(0, 7); // "2026-01"
                 monthlyTotals[mKey] = (monthlyTotals[mKey] || 0) + t.amount;
             }
@@ -527,8 +527,11 @@
             return dateObj.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }); // e.g., "Jan 26"
         });
         const barData = sortedMonths.map(m => monthlyTotals[m]);
+        
+        // 4. Determine colors based on positive/negative values
+        const barColors = barData.map(val => val >= 0 ? '#2ecc71' : '#e74c3c');
 
-        // 4. Render Bar Chart
+        // 5. Render Bar Chart
         if(barChartInstance) barChartInstance.destroy();
         
         if (sortedMonths.length > 0) {
@@ -537,9 +540,9 @@
                 data: {
                     labels: barLabels,
                     datasets: [{
-                        label: 'Income',
+                        label: 'Net Balance',
                         data: barData,
-                        backgroundColor: '#2ecc71', // Income Green
+                        backgroundColor: barColors,
                         borderRadius: 5,
                         barThickness: 20
                     }]
@@ -553,7 +556,7 @@
                             align: 'top',
                             color: '#666',
                             font: { size: 10, weight: 'bold' },
-                            formatter: (value) => '$' + Math.round(value)
+                            formatter: (value) => (value >= 0 ? '+' : '-') + '$' + Math.abs(Math.round(value))
                         },
                         tooltip: {
                             callbacks: {
