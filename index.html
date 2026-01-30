@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Pro Wallet v9 (Percent Charts)</title>
+    <title>Pro Wallet v10 (Income Trend)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
@@ -264,6 +264,11 @@
             <div id="stats-period-display" class="current-period-badge">All Time</div>
             
             <div class="chart-container">
+                <h4 style="color: var(--primary-color)">Monthly Income Trend</h4>
+                <canvas id="monthlyBarChart"></canvas>
+            </div>
+
+            <div class="chart-container">
                 <h4 style="color: var(--income-color)">Income Breakdown</h4>
                 <div id="income-msg" class="no-data-msg" style="display:none">No Income data.</div>
                 <canvas id="incomeChart"></canvas>
@@ -385,6 +390,7 @@
     // Chart instances & State
     let expenseChartInstance = null;
     let incomeChartInstance = null;
+    let barChartInstance = null; // New Bar Chart Instance
     let excludedIncomeCategories = new Set(); 
 
     // DATA
@@ -481,7 +487,7 @@
         localStorage.setItem('transactions', JSON.stringify(transactions)); updateValues(); renderHistory(); 
     }
 
-    // --- CHART LOGIC (UPDATED WITH PERCENTAGES) ---
+    // --- CHART LOGIC (UPDATED WITH BAR CHART & PERCENTAGES) ---
     function renderStats() {
         if(!window.Chart) return;
         
@@ -492,10 +498,86 @@
 
         const selectedMonth = filterMonth.value;
         statsPeriodDisplay.innerText = selectedMonth === 'all' ? "Showing: All Time" : `Showing: ${selectedMonth}`;
+        
+        // Filter data for the Breakdown Charts (Donuts) - Respects the specific month filter
         const currentData = transactions.filter(t => (t.walletId === currentWalletId) && (selectedMonth === 'all' || (t.date && t.date.startsWith(selectedMonth))));
+        
         const sortType = chartSortSelect.value;
         const colorPalette = ['#3b82f6', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#34495e', '#7f8c8d'];
         
+        // --- NEW LOGIC: MONTHLY BAR CHART (Shows trend regardless of filter) ---
+        const monthlyCtx = document.getElementById('monthlyBarChart');
+        
+        // 1. Calculate Monthly Totals from ALL transactions in this wallet
+        const monthlyTotals = {};
+        transactions.forEach(t => {
+            if(t.walletId === currentWalletId && t.amount > 0) { // Income only
+                const mKey = t.date.substring(0, 7); // "2026-01"
+                monthlyTotals[mKey] = (monthlyTotals[mKey] || 0) + t.amount;
+            }
+        });
+
+        // 2. Sort Months chronologically
+        const sortedMonths = Object.keys(monthlyTotals).sort();
+        
+        // 3. Prepare Data for Chart
+        const barLabels = sortedMonths.map(m => {
+            const [y, monthNum] = m.split('-');
+            const dateObj = new Date(y, monthNum - 1);
+            return dateObj.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }); // e.g., "Jan 26"
+        });
+        const barData = sortedMonths.map(m => monthlyTotals[m]);
+
+        // 4. Render Bar Chart
+        if(barChartInstance) barChartInstance.destroy();
+        
+        if (sortedMonths.length > 0) {
+            barChartInstance = new Chart(monthlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: barLabels,
+                    datasets: [{
+                        label: 'Income',
+                        data: barData,
+                        backgroundColor: '#2ecc71', // Income Green
+                        borderRadius: 5,
+                        barThickness: 20
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            color: '#666',
+                            font: { size: 10, weight: 'bold' },
+                            formatter: (value) => '$' + Math.round(value)
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ' $' + context.raw.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { display: true, drawBorder: false, color: '#f0f0f0' },
+                            ticks: { callback: function(value) { return '$' + value; } }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+        // --- END BAR CHART LOGIC ---
+
         function getChartData(type) {
             const totals = {}; const isIncome = type === 'income';
             currentData.forEach(t => {
@@ -532,7 +614,6 @@
                         let dataArr = ctx.chart.data.datasets[0].data;
                         dataArr.map(data => { sum += data; });
                         let percentage = (value * 100 / sum).toFixed(1);
-                        // Hide if less than 5% to prevent clutter
                         if(percentage < 5) return "";
                         return percentage + "%";
                     }
